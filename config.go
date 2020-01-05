@@ -12,6 +12,6 @@ func DefaultConfig() Config {
 	return Config{
 		TabSize:         4,
 		ExpandTabs:      false,
-		UseHighlighting: false,
+		UseHighlighting: true,
 	}
 }

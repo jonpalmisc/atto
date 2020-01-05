@@ -54,9 +54,11 @@ func (l *BufferLine) Update() {
 
 	l.Highlighting = make([]HighlightType, len(l.DisplayText))
 
-	switch l.Editor.FileType {
-	case FileTypeC, FileTypeCPP:
-		HighlightLineC(l)
+	if l.Editor.Config.UseHighlighting {
+		switch l.Editor.FileType {
+		case FileTypeC, FileTypeCPP:
+			HighlightLineC(l)
+		}
 	}
 }
 
