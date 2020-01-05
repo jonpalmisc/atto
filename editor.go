@@ -185,15 +185,14 @@ func (e *Editor) BreakLine() {
 		e.InsertLine(e.CursorY-1, "")
 		e.CursorX = 0
 	} else {
-		currentRow := e.Buffer[e.CursorY-1]
-		currentText := currentRow.Text
-		indentLength := currentRow.IndentLength()
+		text := e.CurrentRow().Text
+		indent := e.CurrentRow().IndentLength()
 
-		e.InsertLine(e.CursorY, currentText[:indentLength]+currentText[e.CursorX:])
-		e.Buffer[e.CursorY-1].Text = currentText[:e.CursorX]
-		e.Buffer[e.CursorY-1].Update()
+		e.InsertLine(e.CursorY, text[:indent]+text[e.CursorX:])
+		e.CurrentRow().Text = text[:e.CursorX]
+		e.CurrentRow().Update()
 
-		e.CursorX = indentLength
+		e.CursorX = indent
 	}
 
 	e.CursorY++
@@ -206,8 +205,7 @@ func (e *Editor) InsertChar(c rune) {
 		e.InsertLine(len(e.Buffer), "")
 	}
 
-	// TODO: Add support to convert tab to spaces.
-	e.Buffer[e.CursorY-1].InsertChar(e.CursorX, c)
+	e.CurrentRow().InsertChar(e.CursorX, c)
 	e.CursorX++
 	e.Dirty = true
 }
@@ -217,11 +215,11 @@ func (e *Editor) DeleteChar() {
 	if e.CursorX == 0 && e.CursorY-1 == 0 {
 		return
 	} else if e.CursorX > 0 {
-		e.Buffer[e.CursorY-1].DeleteChar(e.CursorX - 1)
+		e.CurrentRow().DeleteChar(e.CursorX - 1)
 		e.CursorX--
 	} else {
 		e.CursorX = len(e.Buffer[e.CursorY-2].Text)
-		e.Buffer[e.CursorY-2].AppendString(e.Buffer[e.CursorY-1].Text)
+		e.Buffer[e.CursorY-2].AppendString(e.CurrentRow().Text)
 		e.RemoveLine(e.CursorY - 1)
 		e.CursorY--
 	}
@@ -361,7 +359,7 @@ const (
 
 // ScrollView recalculates the offsets for the view window.
 func (e *Editor) ScrollView() {
-	e.CursorDX = e.Buffer[e.CursorY-1].AdjustX(e.CursorX)
+	e.CursorDX = e.CurrentRow().AdjustX(e.CursorX)
 
 	if e.CursorY-1 < e.OffsetY {
 		e.OffsetY = e.CursorY - 1
@@ -396,37 +394,40 @@ func (e *Editor) MoveCursor(move CursorMove) {
 			e.CursorX--
 		} else if e.CursorY > 1 {
 			e.CursorY--
-			e.CursorX = len(e.Buffer[e.CursorY-1].Text)
+			e.CursorX = len(e.CurrentRow().Text)
 		}
 	case CursorMoveRight:
-		if e.CursorX < len(e.Buffer[e.CursorY-1].Text) {
+		if e.CursorX < len(e.CurrentRow().Text) {
 			e.CursorX++
-		} else if e.CursorX == len(e.Buffer[e.CursorY-1].Text) && e.CursorY != len(e.Buffer) {
+		} else if e.CursorX == len(e.CurrentRow().Text) && e.CursorY != len(e.Buffer) {
 			e.CursorX = 0
 			e.CursorY++
 		}
 	case CursorMoveLineStart:
-		line := e.Buffer[e.CursorY-1]
 
 		// Move the cursor to the end of the indent if the cursor is not there
 		// already, otherwise, move it to the start of the line.
-		if e.CursorX != line.IndentLength() {
-			e.CursorX = line.IndentLength()
+		if e.CursorX != e.CurrentRow().IndentLength() {
+			e.CursorX = e.CurrentRow().IndentLength()
 		} else {
 			e.CursorX = 0
 		}
 	case CursorMoveLineEnd:
-		e.CursorX = len(e.Buffer[e.CursorY-1].Text)
+		e.CursorX = len(e.CurrentRow().Text)
 	}
 
 	// Prevent the user from moving past the end of the line.
-	rowLength := len(e.Buffer[e.CursorY-1].Text)
+	rowLength := len(e.CurrentRow().Text)
 	if e.CursorX > rowLength {
 		e.CursorX = rowLength
 	}
 }
 
 /* -------------------------------- Internal -------------------------------- */
+
+func (e *Editor) CurrentRow() *BufferLine {
+	return &e.Buffer[e.CursorY-1]
+}
 
 // SetStatusMessage sets the status message and the time it was set at.
 func (e *Editor) SetStatusMessage(message string) {
