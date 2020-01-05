@@ -183,16 +183,20 @@ func (e *Editor) RemoveLine(index int) {
 func (e *Editor) BreakLine() {
 	if e.CursorX == 0 {
 		e.InsertLine(e.CursorY-1, "")
+		e.CursorX = 0
 	} else {
 		currentRow := e.Buffer[e.CursorY-1]
+		currentText := currentRow.Text
+		indentLength := currentRow.IndentLength()
 
-		e.InsertLine(e.CursorY, currentRow.Text[e.CursorX:])
-		e.Buffer[e.CursorY-1].Text = currentRow.Text[:e.CursorX]
+		e.InsertLine(e.CursorY, currentText[:indentLength]+currentText[e.CursorX:])
+		e.Buffer[e.CursorY-1].Text = currentText[:e.CursorX]
 		e.Buffer[e.CursorY-1].Update()
+
+		e.CursorX = indentLength
 	}
 
 	e.CursorY++
-	e.CursorX = 0
 	e.Dirty = true
 }
 
@@ -404,20 +408,10 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	case CursorMoveLineStart:
 		line := e.Buffer[e.CursorY-1]
 
-		// Determine how far indented the current line is.
-		indent := 0
-		for i := 0; i < len(line.Text); i++ {
-			if line.Text[i] != ' ' && line.Text[i] != '\t' {
-				break
-			}
-
-			indent++
-		}
-
 		// Move the cursor to the end of the indent if the cursor is not there
 		// already, otherwise, move it to the start of the line.
-		if e.CursorX != indent {
-			e.CursorX = indent
+		if e.CursorX != line.IndentLength() {
+			e.CursorX = line.IndentLength()
 		} else {
 			e.CursorX = 0
 		}

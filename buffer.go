@@ -86,3 +86,14 @@ func (l *BufferLine) AdjustX(x int) int {
 
 	return delta
 }
+
+// IndentLength gets the line's level of indentaion in columns.
+func (l *BufferLine) IndentLength() (indent int) {
+	j := 0
+	for l.Text[j] == ' ' || l.Text[j] == '\t' {
+		indent++
+		j++
+	}
+
+	return indent
+}
