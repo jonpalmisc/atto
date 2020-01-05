@@ -25,7 +25,16 @@ func MakeBufferLine(editor *Editor, text string) (bl BufferLine) {
 
 // InsertChar inserts a character into the line at the given index.
 func (l *BufferLine) InsertChar(i int, c rune) {
-	l.Text = l.Text[:i] + string(c) + l.Text[i:]
+
+	// If a tab is being inserted and the editor is using soft tabs insert a
+	// tab's width worth of spaces instead.
+	if c == '\t' && l.Editor.Config.SoftTabs {
+		l.Text = l.Text[:i] + strings.Repeat(" ", l.Editor.Config.TabSize) + l.Text[i:]
+		l.Editor.CursorX += l.Editor.Config.TabSize - 1
+	} else {
+		l.Text = l.Text[:i] + string(c) + l.Text[i:]
+	}
+
 	l.Update()
 }
 
@@ -50,7 +59,7 @@ func (l *BufferLine) AppendString(s string) {
 // Update refreshes the DisplayText field.
 func (l *BufferLine) Update() {
 	// Expand tabs to spaces.
-	l.DisplayText = strings.ReplaceAll(l.Text, "\t", "    ")
+	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Editor.Config.TabSize))
 
 	l.Highlighting = make([]HighlightType, len(l.DisplayText))
 
@@ -64,11 +73,12 @@ func (l *BufferLine) Update() {
 
 // AdjustX corrects the cursor's X position to compensate for rendering effects.
 func (l *BufferLine) AdjustX(x int) int {
+	tabSize := l.Editor.Config.TabSize
 	delta := 0
 
 	for _, c := range l.Text[:x] {
 		if c == '\t' {
-			delta += 3 - (delta % 4)
+			delta += (tabSize - 1) - (delta % tabSize)
 		}
 
 		delta++

@@ -3,7 +3,7 @@ package main
 // Config holds the editor's configuration and settings.
 type Config struct {
 	TabSize         int
-	ExpandTabs      bool
+	SoftTabs        bool
 	UseHighlighting bool
 }
 
@@ -11,7 +11,7 @@ type Config struct {
 func DefaultConfig() Config {
 	return Config{
 		TabSize:         4,
-		ExpandTabs:      false,
+		SoftTabs:        false,
 		UseHighlighting: true,
 	}
 }

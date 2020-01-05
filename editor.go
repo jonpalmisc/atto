@@ -89,6 +89,8 @@ func (e *Editor) Run() {
 				e.DeleteChar()
 			case termbox.KeyEnter:
 				e.BreakLine()
+			case termbox.KeyTab:
+				e.InsertChar('\t')
 			case termbox.KeySpace:
 				e.InsertChar(' ')
 			default:
