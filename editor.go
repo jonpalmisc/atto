@@ -203,7 +203,7 @@ func (e *Editor) InsertChar(c rune) {
 
 // DeleteChar deletes the character to the left of the cursor.
 func (e *Editor) DeleteChar() {
-	if e.CursorY == len(e.Buffer) || (e.CursorX == 0 && e.CursorY-1 == 0) {
+	if e.CursorX == 0 && e.CursorY-1 == 0 {
 		return
 	} else if e.CursorX > 0 {
 		e.Buffer[e.CursorY-1].DeleteChar(e.CursorX - 1)
