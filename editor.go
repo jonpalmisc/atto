@@ -117,6 +117,11 @@ func (e *Editor) Open(path string) {
 		e.InsertLine(len(e.Buffer), s.Text())
 	}
 
+	// If the file is completely empty, add an empty line to the buffer.
+	if len(e.Buffer) == 0 {
+		e.InsertLine(0, "")
+	}
+
 	// The file can now be closed since it is loaded into memory.
 	f.Close()
 }
