@@ -17,16 +17,6 @@ const (
 	HighlightTypeComment
 )
 
-// These are just temporary until language definitions are added.
-var PrimaryKeywordsC = [...]string{
-	"if", "else", "for", "while", "switch", "case", "break", "continue",
-	"return", "struct", "union", "typedef", "static", "enum",
-}
-
-var SecondaryKeywordsC = [...]string{
-	"int", "long", "double", "float", "char", "unsigned", "signed", "void", "NULL",
-}
-
 func (t HighlightType) Color() termbox.Attribute {
 	switch t {
 	case HighlightTypePrimaryKeyword:
@@ -53,77 +43,76 @@ func IsSeparator(c rune) bool {
 	}
 }
 
-func HighlightLineC(l *BufferLine) {
-	afterSeparator := true
+func HighlightLine(l *BufferLine, s *Langauge) {
+	H := &l.Highlighting
+
 	inString := false
-	inComment := false
+	afterSeparator := true
 
-	for i, c := range l.DisplayText {
-		lastHighlight := HighlightTypeNormal
+	text := []rune(l.DisplayText)
+	for i := 0; i < len(text); i++ {
+		c := text[i]
+
+		lastHT := HighlightTypeNormal
 		if i > 0 {
-			lastHighlight = l.Highlighting[i-1]
+			lastHT = (*H)[i-1]
 		}
 
-		// Highlight comment markers and all succeeding characters.
-		if inComment {
-			l.Highlighting[i] = HighlightTypeComment
-			continue
-		} else if !inString && i+2 <= len(l.DisplayText) {
-			if l.DisplayText[i:i+2] == "//" {
-				l.Highlighting[i] = HighlightTypeComment
-				inComment = true
+		// If we are already within a string, keep highlighting until we hit
+		// another quote character.
+		if inString {
+			(*H)[i] = HighlightTypeString
+
+			if c == '"' {
+				inString = false
 			}
+
+			continue
 		}
 
-		// Highlight characters in strings and quotes.
-		// TODO: Highlight escaped characters differently.
+		// If we hit the beginning of a single line comment, highlight the rest
+		// of the line and break out of the loop.
+		scsPattern := &s.Patterns.SingleLineCommentStart
+		scsLength := len(*scsPattern)
+		if i+scsLength <= len(text) && string(text[i:i+scsLength]) == *scsPattern {
+			for j := i; j < len(text); j++ {
+				(*H)[j] = HighlightTypeComment
+			}
+
+			break
+		}
+
+		// If we hit a quotation mark, set inString to true and highlight it.
 		if c == '"' || c == '\'' {
-			inString = !inString
-			l.Highlighting[i] = HighlightTypeString
-			continue
-		} else if inString {
-			l.Highlighting[i] = HighlightTypeString
+			(*H)[i] = HighlightTypeString
+			inString = true
 			continue
 		}
 
-		// Highlight numbers and decimal points.
+		// If our character is a digit, is after a separator or trailing another
+		// digit, or is a decimal trailing a digit, highlight it as a number.
 		if unicode.IsDigit(c) &&
-			(afterSeparator || lastHighlight == HighlightTypeNumber) ||
-			(c == '.' && lastHighlight == HighlightTypeNumber) {
-			l.Highlighting[i] = HighlightTypeNumber
+			(afterSeparator || lastHT == HighlightTypeNumber) ||
+			(c == '.' && lastHT == HighlightTypeNumber) {
+			(*H)[i] = HighlightTypeNumber
 			continue
 		}
 
-		// Highlight keywords and primitive types.
 		if afterSeparator {
-			for _, keyword := range PrimaryKeywordsC {
-				keywordLen := len(keyword)
+			for _, k := range s.Keywords {
+				kl := len(k)
 
-				if i+keywordLen < len(l.DisplayText) && l.DisplayText[i:i+keywordLen] == keyword {
-					for j := 0; j < keywordLen; j++ {
-						l.Highlighting[i+j] = HighlightTypePrimaryKeyword
+				tail := ' '
+				if i+kl < len(text) {
+					tail = text[i+kl]
+				}
+
+				if i+kl <= len(text) && string(text[i:i+kl]) == k && IsSeparator(tail) {
+					for j := 0; j < kl; j++ {
+						(*H)[i+j] = HighlightTypeSecondaryKeyword
 					}
-
-					i += keywordLen - 1
-					break
 				}
 			}
-
-			for _, keyword := range SecondaryKeywordsC {
-				keywordLen := len(keyword)
-
-				if i+keywordLen < len(l.DisplayText) && l.DisplayText[i:i+keywordLen] == keyword {
-					for j := 0; j < keywordLen; j++ {
-						l.Highlighting[i+j] = HighlightTypeSecondaryKeyword
-					}
-
-					i += keywordLen - 1
-					break
-				}
-			}
-
-			afterSeparator = false
-			continue
 		}
 
 		afterSeparator = IsSeparator(c)
