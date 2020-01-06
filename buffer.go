@@ -66,7 +66,9 @@ func (l *BufferLine) Update() {
 	if l.Editor.Config.UseHighlighting {
 		switch l.Editor.FileType {
 		case FileTypeC, FileTypeCPP:
-			HighlightLineC(l)
+			HighlightLine(l, &SyntaxC)
+		case FileTypeGo:
+			HighlightLine(l, &SyntaxGo)
 		}
 	}
 }
