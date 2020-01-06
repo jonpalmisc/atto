@@ -75,6 +75,10 @@ func (e *Editor) Run() {
 				e.MoveCursor(CursorMoveLeft)
 			case termbox.KeyArrowRight:
 				e.MoveCursor(CursorMoveRight)
+			case termbox.KeyPgup:
+				e.MoveCursor(CursorMovePageUp)
+			case termbox.KeyPgdn:
+				e.MoveCursor(CursorMovePageDown)
 			case termbox.KeyCtrlA:
 				e.MoveCursor(CursorMoveLineStart)
 			case termbox.KeyCtrlE:
@@ -355,6 +359,12 @@ const (
 
 	// CursorMoveLineEnd moves the cursor to the end of the line.
 	CursorMoveLineEnd CursorMove = 5
+
+	// CursorMovePageUp moves the cursor up by the  height of the screen.
+	CursorMovePageUp CursorMove = 6
+
+	// CursorMovePageDown moves the cursor down by the  height of the screen.
+	CursorMovePageDown CursorMove = 7
 )
 
 // ScrollView recalculates the offsets for the view window.
@@ -414,6 +424,19 @@ func (e *Editor) MoveCursor(move CursorMove) {
 		}
 	case CursorMoveLineEnd:
 		e.CursorX = len(e.CurrentRow().Text)
+	case CursorMovePageUp:
+		if e.Height > e.CursorY {
+			e.CursorY = 1
+		} else {
+			e.CursorY -= e.Height - 2
+		}
+	case CursorMovePageDown:
+		e.CursorY += e.Height - 2
+		e.OffsetY += e.Height
+
+		if e.CursorY > len(e.Buffer) {
+			e.CursorY = len(e.Buffer) - 1
+		}
 	}
 
 	// Prevent the user from moving past the end of the line.
