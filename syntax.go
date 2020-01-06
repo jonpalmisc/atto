@@ -6,12 +6,12 @@ type SyntaxPatterns struct {
 	MultiLineCommentEnd    string
 }
 
-type Langauge struct {
+type Syntax struct {
 	Keywords []string
 	Patterns SyntaxPatterns
 }
 
-var LanguageC Langauge = Langauge{
+var SyntaxC Syntax = Syntax{
 	Keywords: []string{
 		"#define", "#include", "NULL", "auto", "break", "case", "char", "const",
 		"continue", "default", "do", "double", "else", "enum", "extern", "float",
@@ -26,7 +26,7 @@ var LanguageC Langauge = Langauge{
 	},
 }
 
-var LanguageGo Langauge = Langauge{
+var SyntaxGo Syntax = Syntax{
 	Keywords: []string{
 		"append", "bool", "break", "byte", "cap", "case", "chan", "close",
 		"complex", "complex128", "complex64", "const", "continue", "copy",
