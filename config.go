@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,23 +24,42 @@ func DefaultConfig() Config {
 	}
 }
 
-// ConfigPath returns the path of Atto's config file on the current platform.
-func ConfigPath() (string, error) {
+func AttoFolderPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
 	}
 
-	return filepath.Join(homeDir, ".atto", "config.yml"), nil
+	return filepath.Join(homeDir, ".atto"), nil
+}
+
+// ConfigPath returns the path of Atto's config file on the current platform.
+func ConfigPath() (string, error) {
+	attoFolder, err := AttoFolderPath()
+	if err != nil {
+		return "", err
+	}
+
+	return filepath.Join(attoFolder, "config.yml"), nil
 }
 
 // LoadConfig attempts to load the user's config
 func LoadConfig() (Config, error) {
+	attoFolderPath, err := AttoFolderPath()
+	if err != nil {
+		panic(err)
+	}
 
-	// Get the path of the config file. This should never fail, but...
+	// Create the Atto folder if it doesn't exist already
+	if _, err = os.Stat(attoFolderPath); os.IsNotExist(err) {
+
+		// TODO: Make this fail non-silently.
+		_ = os.MkdirAll(attoFolderPath, os.ModePerm)
+	}
+
 	configPath, err := ConfigPath()
 	if err != nil {
-		return DefaultConfig(), errors.New("couldn't resolve config path")
+		return DefaultConfig(), err
 	}
 
 	// Check if the config file exists. If it does not, create one with the
@@ -49,7 +67,7 @@ func LoadConfig() (Config, error) {
 	if _, err := os.Stat(configPath); err != nil {
 		defaultConfig := DefaultConfig()
 
-		// Marshal the default config to YAML. This also should never fail...
+		// Marshal the default config to YAML.
 		yml, err := yaml.Marshal(&defaultConfig)
 		if err != nil {
 			return DefaultConfig(), err

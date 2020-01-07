@@ -4,7 +4,7 @@ import "strings"
 
 const (
 	ProgramName    string = "Atto"
-	ProgramVersion string = "0.2.2"
+	ProgramVersion string = "0.2.3"
 	ProgramAuthor  string = "Jon Palmisciano <jonpalmisc@gmail.com>"
 )
 
