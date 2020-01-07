@@ -46,10 +46,17 @@ type Editor struct {
 
 // MakeEditor creates a new Editor instance.
 func MakeEditor() Editor {
-	return Editor{
-		CursorY: 1,
-		Config:  DefaultConfig(),
+	editor := Editor{}
+
+	config, err := LoadConfig()
+	if err != nil {
+		editor.SetStatusMessage(fmt.Sprintf("Failed to load config! (%v)", err))
 	}
+
+	editor.CursorY = 1
+	editor.Config = config
+
+	return editor
 }
 
 // Quit closes the editor and terminates the program.
@@ -60,7 +67,6 @@ func (e *Editor) Quit() {
 
 // Run starts the editor.
 func (e *Editor) Run() {
-	e.SetStatusMessage("Welcome to Atto.")
 	e.Draw()
 
 	for {
