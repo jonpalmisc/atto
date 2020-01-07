@@ -115,13 +115,23 @@ func (e *Editor) Run() {
 
 // Open reads a file into a the buffer.
 func (e *Editor) Open(path string) {
+	e.FileName = path
+	e.FileType = GuessFileType(path)
+
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		_, err := os.Create(path)
+		if err != nil {
+			panic(err)
+		}
+
+		e.InsertLine(0, "")
+	}
+
 	f, err := os.Open(path)
 	if err != nil {
 		panic(err) // TODO: Handle this more carefully.
 	}
-
-	e.FileName = path
-	e.FileType = GuessFileType(path)
 
 	// Read the file line by line and append each line to end of the buffer.
 	s := bufio.NewScanner(f)
