@@ -145,12 +145,7 @@ func (e *Editor) Save() {
 	// Append each line of the buffer (plus a newline) to the string.
 	bufferLen := len(e.Buffer)
 	for i := 0; i < bufferLen; i++ {
-		text += e.Buffer[i].Text
-
-		// Don't insert a newline at the end of the last line.
-		if i < bufferLen-1 {
-			text += "\n"
-		}
+		text += e.Buffer[i].Text + "\n"
 	}
 
 	if err := ioutil.WriteFile(e.FileName, []byte(text), 0644); err != nil {
