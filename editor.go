@@ -56,6 +56,10 @@ func MakeEditor() Editor {
 	editor.CursorY = 1
 	editor.Config = config
 
+	if err = termbox.Init(); err != nil {
+		panic(err)
+	}
+
 	return editor
 }
 
@@ -130,7 +134,9 @@ func (e *Editor) Open(path string) {
 
 	f, err := os.Open(path)
 	if err != nil {
-		panic(err) // TODO: Handle this more carefully.
+		e.InsertLine(0, "")
+		e.SetStatusMessage("Error: Couldn't open file: %v (%v)", path, err)
+		return
 	}
 
 	// Read the file line by line and append each line to end of the buffer.
@@ -174,7 +180,6 @@ func (e *Editor) InsertLine(i int, text string) {
 	// Ensure the index we are trying to insert at is valid.
 	if i >= 0 && i <= len(e.Buffer) {
 
-		// Neat hack for inserting an element into a slice.
 		// https://github.com/golang/go/wiki/SliceTricks
 		e.Buffer = append(e.Buffer, BufferLine{})
 		copy(e.Buffer[i+1:], e.Buffer[i:])
