@@ -297,7 +297,7 @@ func (e *Editor) DrawBuffer() {
 
 // DrawStatusBar draws the editor's status bar on the bottom of the screen.
 func (e *Editor) DrawStatusBar() {
-	right := fmt.Sprintf("%v | Line %v, Column %v", e.FileType, e.CursorY, e.CursorDX+1)
+	right := fmt.Sprintf(" | %v | Line %v, Column %v", e.FileType, e.CursorY, e.CursorDX+1)
 	rightLen := len(right)
 
 	// Draw the status bar canvas.
