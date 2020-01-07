@@ -50,7 +50,7 @@ func MakeEditor() Editor {
 
 	config, err := LoadConfig()
 	if err != nil {
-		editor.SetStatusMessage(fmt.Sprintf("Failed to load config! (%v)", err))
+		editor.SetStatusMessage("Failed to load config! (%v)", err)
 	}
 
 	editor.CursorY = 1
@@ -159,9 +159,9 @@ func (e *Editor) Save() {
 	}
 
 	if err := ioutil.WriteFile(e.FileName, []byte(text), 0644); err != nil {
-		e.SetStatusMessage(fmt.Sprintf("Error: %v.", err))
+		e.SetStatusMessage("Error: %v.", err)
 	} else {
-		e.SetStatusMessage("File saved successfully.")
+		e.SetStatusMessage("File saved successfully. (%v)", e.FileName)
 		e.Dirty = false
 	}
 }
@@ -464,7 +464,7 @@ func (e *Editor) CurrentRow() *BufferLine {
 }
 
 // SetStatusMessage sets the status message and the time it was set at.
-func (e *Editor) SetStatusMessage(message string) {
-	e.StatusMessage = message
+func (e *Editor) SetStatusMessage(format string, args ...interface{}) {
+	e.StatusMessage = fmt.Sprintf(format, args...)
 	e.StatusMessageTime = time.Now()
 }
