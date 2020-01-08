@@ -52,9 +52,10 @@ func LoadConfig() (Config, error) {
 
 	// Create the Atto folder if it doesn't exist already
 	if _, err = os.Stat(attoFolderPath); os.IsNotExist(err) {
-
-		// TODO: Make this fail non-silently.
-		_ = os.MkdirAll(attoFolderPath, os.ModePerm)
+		err = os.MkdirAll(attoFolderPath, os.ModePerm)
+		if err != nil {
+			return DefaultConfig(), err
+		}
 	}
 
 	configPath, err := ConfigPath()

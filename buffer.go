@@ -40,14 +40,10 @@ func (l *BufferLine) InsertChar(i int, c rune) {
 
 // DeleteChar deletes a character from the line at the given index.
 func (l *BufferLine) DeleteChar(i int) {
-
-	// TODO: Condense this when my brain works.
-	if i < 0 || i >= len(l.Text) {
-		return
+	if i >= 0 && i < len(l.Text) {
+		l.Text = l.Text[:i] + l.Text[i+1:]
+		l.Update()
 	}
-
-	l.Text = l.Text[:i] + l.Text[i+1:]
-	l.Update()
 }
 
 // AppendString appends a string to the line.
@@ -89,12 +85,10 @@ func (l *BufferLine) AdjustX(x int) int {
 	return delta
 }
 
-// IndentLength gets the line's level of indentaion in columns.
+// IndentLength gets the line's level of indentation in columns.
 func (l *BufferLine) IndentLength() (indent int) {
-	j := 0
-	for l.Text[j] == ' ' || l.Text[j] == '\t' {
+	for j := 0; l.Text[j] == ' ' || l.Text[j] == '\t'; j++ {
 		indent++
-		j++
 	}
 
 	return indent

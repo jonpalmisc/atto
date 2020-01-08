@@ -189,14 +189,10 @@ func (e *Editor) InsertLine(i int, text string) {
 
 // RemoveLine removes the line at the given index from the buffer.
 func (e *Editor) RemoveLine(index int) {
-
-	// TODO: Condense this when my brain works.
-	if index < 0 || index >= len(e.Buffer) {
-		return
+	if index >= 0 && index < len(e.Buffer) {
+		e.Buffer = append(e.Buffer[:index], e.Buffer[index+1:]...)
+		e.Dirty = true
 	}
-
-	e.Buffer = append(e.Buffer[:index], e.Buffer[index+1:]...)
-	e.Dirty = true
 }
 
 // BreakLine inserts a newline character and breaks the line at the cursor.
