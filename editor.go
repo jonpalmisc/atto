@@ -233,21 +233,25 @@ func (e *Editor) BreakLine() {
 
 // InsertChar inserts a character at the cursor's position.
 func (e *Editor) InsertChar(c rune) {
-	if e.CursorY == len(e.Buffer) {
-		e.InsertLine(len(e.Buffer), "")
-	}
+	if IsInsertable(c) {
+		if e.CursorY == len(e.Buffer) {
+			e.InsertLine(len(e.Buffer), "")
+		}
 
-	e.CurrentRow().InsertChar(e.CursorX, c)
-	e.CursorX++
-	e.Dirty = true
+		e.CurrentRow().InsertChar(e.CursorX, c)
+		e.CursorX++
+		e.Dirty = true
+	}
 }
 
 // InsertPromptChar is a variant of InsertChar for modifying the prompt answer.
 func (e *Editor) InsertPromptChar(c rune) {
-	i := e.CursorX - len(e.Question)
+	if IsInsertable(c) {
+		i := e.CursorX - len(e.Question)
 
-	e.Answer = e.Answer[:i] + string(c) + e.Answer[i:]
-	e.CursorX++
+		e.Answer = e.Answer[:i] + string(c) + e.Answer[i:]
+		e.CursorX++
+	}
 }
 
 // DeleteChar deletes the character to the left of the cursor.

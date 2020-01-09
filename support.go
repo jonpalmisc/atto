@@ -1,12 +1,30 @@
 package main
 
-import "strings"
+import (
+	"strings"
+	"unicode"
+)
 
 const (
 	ProgramName    string = "Atto"
 	ProgramVersion string = "0.2.3"
 	ProgramAuthor  string = "Jon Palmisciano <jonpalmisc@gmail.com>"
 )
+
+func IsInsertable(c rune) bool {
+	switch unicode.ToLower(c) {
+	case '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+	'1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+	'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+	'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
+	'z', 'x', 'c', 'v', 'b', 'n', 'm',
+	'`', '~', '-', '=', '+', '\t', '[', '{', ']', '}', '\\', '|',
+	';', ':', '\'', '"', ',', '<', '.', '>', '/', '?', ' ':
+		return true
+	default:
+		return false
+	}
+}
 
 // FileType represents a type of file.
 type FileType string
