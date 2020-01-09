@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -40,6 +41,10 @@ type Editor struct {
 	// The current status message and the time it was set.
 	StatusMessage     string
 	StatusMessageTime time.Time
+
+	PromptActive bool
+	Question     string
+	Answer       string
 
 	Config Config
 }
@@ -160,6 +165,12 @@ func (e *Editor) Open(path string) {
 
 // Save writes the current buffer back to the file it was read from.
 func (e *Editor) Save() {
+	filename, err := e.Ask("Save as: ", e.FileName)
+	if err != nil {
+		e.SetStatusMessage("Save cancelled.")
+		return
+	}
+
 	var text string
 
 	// Append each line of the buffer (plus a newline) to the string.
@@ -168,10 +179,11 @@ func (e *Editor) Save() {
 		text += e.Buffer[i].Text + "\n"
 	}
 
-	if err := ioutil.WriteFile(e.FileName, []byte(text), 0644); err != nil {
+	if err := ioutil.WriteFile(filename, []byte(text), 0644); err != nil {
 		e.SetStatusMessage("Error: %v.", err)
 	} else {
-		e.SetStatusMessage("File saved successfully. (%v)", e.FileName)
+		e.SetStatusMessage("File saved successfully. (%v)", filename)
+		e.FileName = filename
 		e.Dirty = false
 	}
 }
@@ -230,6 +242,14 @@ func (e *Editor) InsertChar(c rune) {
 	e.Dirty = true
 }
 
+// InsertPromptChar is a variant of InsertChar for modifying the prompt answer.
+func (e *Editor) InsertPromptChar(c rune) {
+	i := e.CursorX - len(e.Question)
+
+	e.Answer = e.Answer[:i] + string(c) + e.Answer[i:]
+	e.CursorX++
+}
+
 // DeleteChar deletes the character to the left of the cursor.
 func (e *Editor) DeleteChar() {
 	if e.CursorX == 0 && e.CursorY-1 == 0 {
@@ -245,6 +265,16 @@ func (e *Editor) DeleteChar() {
 	}
 
 	e.Dirty = true
+}
+
+// DeletePromptChar is a variant of DeleteChar for modifying the prompt answer.
+func (e *Editor) DeletePromptChar() {
+	x := e.CursorX - len(e.Question) - 1
+
+	if x >= 0 && x < len(e.Answer) {
+		e.Answer = e.Answer[:x] + e.Answer[x+1:]
+		e.CursorX--
+	}
 }
 
 /* ----------------------------- User Interface ----------------------------- */
@@ -307,7 +337,16 @@ func (e *Editor) DrawBuffer() {
 
 // DrawStatusBar draws the editor's status bar on the bottom of the screen.
 func (e *Editor) DrawStatusBar() {
+	left := ""
+	if e.PromptActive {
+		left = e.Question + e.Answer
+	} else if time.Now().Before(e.StatusMessageTime.Add(3 * time.Second)) {
+		left = e.StatusMessage
+	}
+
 	right := fmt.Sprintf(" | %v | Line %v, Column %v", e.FileType, e.CursorY, e.CursorDX+1)
+
+	leftLen := len(left)
 	rightLen := len(right)
 
 	// Draw the status bar canvas.
@@ -316,12 +355,10 @@ func (e *Editor) DrawStatusBar() {
 			termbox.ColorBlack, termbox.ColorWhite)
 	}
 
-	// Draw the status message on the left if it hasn't expired.
-	if time.Now().Before(e.StatusMessageTime.Add(3 * time.Second)) {
-		for x := 0; x < len(e.StatusMessage); x++ {
-			termbox.SetCell(x, e.Height-1, rune(e.StatusMessage[x]),
-				termbox.ColorBlack, termbox.ColorWhite)
-		}
+	// Draw the current prompt or status message on the left if it hasn't expired.
+	for x := 0; x < leftLen; x++ {
+		termbox.SetCell(x, e.Height-1, rune(left[x]),
+			termbox.ColorBlack, termbox.ColorWhite)
 	}
 
 	// Draw the file type and position on the right.
@@ -347,7 +384,11 @@ func (e *Editor) Draw() {
 	e.DrawBuffer()
 	e.DrawStatusBar()
 
-	termbox.SetCursor(e.CursorDX-e.OffsetX, e.CursorY-e.OffsetY)
+	if e.PromptActive {
+		termbox.SetCursor(e.CursorX, e.Height)
+	} else {
+		termbox.SetCursor(e.CursorDX-e.OffsetX, e.CursorY-e.OffsetY)
+	}
 }
 
 /* ----------------------------- Input Handling ----------------------------- */
@@ -385,6 +426,12 @@ const (
 
 // ScrollView recalculates the offsets for the view window.
 func (e *Editor) ScrollView() {
+
+	// If the prompt is currently active, everything below can be skipped.
+	if e.PromptActive {
+		return
+	}
+
 	e.CursorDX = e.CurrentRow().AdjustX(e.CursorX)
 
 	if e.CursorY-1 < e.OffsetY {
@@ -462,6 +509,22 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	}
 }
 
+// MovePromptCursor moves the cursor inside of the current prompt.
+func (e *Editor) MovePromptCursor(move CursorMove) {
+	x := e.CursorX - len(e.Question)
+
+	switch move {
+	case CursorMoveLeft:
+		if x != 0 {
+			e.CursorX--
+		}
+	case CursorMoveRight:
+		if x < len(e.Answer) {
+			e.CursorX++
+		}
+	}
+}
+
 /* -------------------------------- Internal -------------------------------- */
 
 func (e *Editor) CurrentRow() *BufferLine {
@@ -472,4 +535,45 @@ func (e *Editor) CurrentRow() *BufferLine {
 func (e *Editor) SetStatusMessage(format string, args ...interface{}) {
 	e.StatusMessage = fmt.Sprintf(format, args...)
 	e.StatusMessageTime = time.Now()
+}
+
+// Ask prompts the user to answer a question and assumes control over all input
+// until the question is answered or the request is cancelled.
+func (e *Editor) Ask(q, a string) (string, error) {
+	savedX, savedY := e.CursorX, e.CursorY
+
+	defer func() {
+		e.CursorX, e.CursorY = savedX, savedY
+		e.PromptActive = false
+	}()
+
+	e.PromptActive = true
+	e.Question, e.Answer = q, a
+
+	e.CursorY = e.Height
+	e.CursorX = len(e.Question)
+
+	for {
+		e.Draw()
+
+		switch event := termbox.PollEvent(); event.Type {
+		case termbox.EventKey:
+			switch event.Key {
+			case termbox.KeyEsc:
+				return "", errors.New("user cancelled")
+			case termbox.KeyArrowLeft:
+				e.MovePromptCursor(CursorMoveLeft)
+			case termbox.KeyArrowRight:
+				e.MovePromptCursor(CursorMoveRight)
+			case termbox.KeyEnter:
+				return e.Answer, nil
+			case termbox.KeyBackspace2:
+				e.DeletePromptChar()
+			case termbox.KeySpace:
+				e.InsertPromptChar(' ')
+			default:
+				e.InsertPromptChar(event.Ch)
+			}
+		}
+	}
 }
