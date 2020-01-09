@@ -70,6 +70,16 @@ func MakeEditor() Editor {
 
 // Quit closes the editor and terminates the program.
 func (e *Editor) Quit() {
+	if e.Dirty {
+		a, _ := e.Ask("File has unsaved changes - quit anyways? [Y/N]: ", "")
+		switch a {
+		case "Y", "y":
+			break
+		default:
+			return
+		}
+	}
+
 	termbox.Close()
 	os.Exit(0)
 }
@@ -563,7 +573,7 @@ func (e *Editor) Ask(q, a string) (string, error) {
 		switch event := termbox.PollEvent(); event.Type {
 		case termbox.EventKey:
 			switch event.Key {
-			case termbox.KeyEsc:
+			case termbox.KeyEsc, termbox.KeyCtrlX:
 				return "", errors.New("user cancelled")
 			case termbox.KeyArrowLeft:
 				e.MovePromptCursor(CursorMoveLeft)
