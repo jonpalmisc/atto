@@ -69,48 +69,52 @@ func (e *Editor) Quit() {
 	os.Exit(0)
 }
 
+func (e *Editor) HandleEvent(event termbox.Event) {
+	switch event.Type {
+	case termbox.EventKey:
+		switch event.Key {
+		case termbox.KeyArrowUp:
+			e.MoveCursor(CursorMoveUp)
+		case termbox.KeyArrowDown:
+			e.MoveCursor(CursorMoveDown)
+		case termbox.KeyArrowLeft:
+			e.MoveCursor(CursorMoveLeft)
+		case termbox.KeyArrowRight:
+			e.MoveCursor(CursorMoveRight)
+		case termbox.KeyPgup:
+			e.MoveCursor(CursorMovePageUp)
+		case termbox.KeyPgdn:
+			e.MoveCursor(CursorMovePageDown)
+		case termbox.KeyCtrlA:
+			e.MoveCursor(CursorMoveLineStart)
+		case termbox.KeyCtrlE:
+			e.MoveCursor(CursorMoveLineEnd)
+		case termbox.KeyCtrlX:
+			e.Quit()
+		case termbox.KeyCtrlS:
+			e.Save()
+		case termbox.KeyDelete:
+		case termbox.KeyBackspace:
+		case termbox.KeyBackspace2:
+			e.DeleteChar()
+		case termbox.KeyEnter:
+			e.BreakLine()
+		case termbox.KeyTab:
+			e.InsertChar('\t')
+		case termbox.KeySpace:
+			e.InsertChar(' ')
+		default:
+			e.InsertChar(event.Ch)
+		}
+	}
+}
+
 // Run starts the editor.
 func (e *Editor) Run() {
 	e.Draw()
 
 	for {
-		switch event := termbox.PollEvent(); event.Type {
-		case termbox.EventKey:
-			switch event.Key {
-			case termbox.KeyArrowUp:
-				e.MoveCursor(CursorMoveUp)
-			case termbox.KeyArrowDown:
-				e.MoveCursor(CursorMoveDown)
-			case termbox.KeyArrowLeft:
-				e.MoveCursor(CursorMoveLeft)
-			case termbox.KeyArrowRight:
-				e.MoveCursor(CursorMoveRight)
-			case termbox.KeyPgup:
-				e.MoveCursor(CursorMovePageUp)
-			case termbox.KeyPgdn:
-				e.MoveCursor(CursorMovePageDown)
-			case termbox.KeyCtrlA:
-				e.MoveCursor(CursorMoveLineStart)
-			case termbox.KeyCtrlE:
-				e.MoveCursor(CursorMoveLineEnd)
-			case termbox.KeyCtrlX:
-				e.Quit()
-			case termbox.KeyCtrlS:
-				e.Save()
-			case termbox.KeyDelete:
-			case termbox.KeyBackspace:
-			case termbox.KeyBackspace2:
-				e.DeleteChar()
-			case termbox.KeyEnter:
-				e.BreakLine()
-			case termbox.KeyTab:
-				e.InsertChar('\t')
-			case termbox.KeySpace:
-				e.InsertChar(' ')
-			default:
-				e.InsertChar(event.Ch)
-			}
-		}
+		e.HandleEvent(termbox.PollEvent())
 		e.Draw()
 	}
 }
