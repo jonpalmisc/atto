@@ -7,7 +7,7 @@ import (
 
 const (
 	ProgramName    string = "Atto"
-	ProgramVersion string = "0.3.0"
+	ProgramVersion string = "0.3.2"
 	ProgramAuthor  string = "Jon Palmisciano <jonpalmisc@gmail.com>"
 )
 

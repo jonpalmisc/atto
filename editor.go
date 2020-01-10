@@ -106,7 +106,7 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 			e.MoveCursor(CursorMoveLineEnd)
 		case termbox.KeyCtrlX:
 			e.Quit()
-		case termbox.KeyCtrlS:
+		case termbox.KeyCtrlO:
 			e.Save()
 		case termbox.KeyDelete:
 		case termbox.KeyBackspace:
@@ -125,7 +125,16 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 }
 
 // Run starts the editor.
-func (e *Editor) Run() {
+func (e *Editor) Run(args []string) {
+	if len(args) != 0 {
+		e.Open(args[0])
+	} else {
+		e.InsertLine(0, "")
+		e.FileName = "Untitled"
+		e.Dirty = true
+		e.FileType = FileTypeUnknown
+	}
+
 	e.Draw()
 
 	for {
@@ -192,6 +201,7 @@ func (e *Editor) Save() {
 	} else {
 		e.SetStatusMessage("File saved successfully. (%v)", filename)
 		e.FileName = filename
+		e.FileType = GuessFileType(filename)
 		e.Dirty = false
 	}
 }
