@@ -559,7 +559,7 @@ func (e *Editor) Ask(q, a string) (string, error) {
 	e.Question, e.Answer = q, a
 
 	e.CursorY = e.Height
-	e.CursorX = len(e.Question)
+	e.CursorX = len(e.Question) + len(e.Answer)
 
 	for {
 		e.Draw()
