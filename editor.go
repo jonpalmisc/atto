@@ -147,8 +147,6 @@ func (e *Editor) Open(path string) {
 		if err != nil {
 			panic(err)
 		}
-
-		e.InsertLine(0, "")
 	}
 
 	f, err := os.Open(path)
@@ -244,10 +242,6 @@ func (e *Editor) BreakLine() {
 // InsertChar inserts a character at the cursor's position.
 func (e *Editor) InsertChar(c rune) {
 	if IsInsertable(c) {
-		if e.CursorY == len(e.Buffer) {
-			e.InsertLine(len(e.Buffer), "")
-		}
-
 		e.CurrentRow().InsertChar(e.CursorX, c)
 		e.CursorX++
 		e.Dirty = true
