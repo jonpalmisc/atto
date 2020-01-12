@@ -71,9 +71,12 @@ func MakeEditor() Editor {
 // Quit closes the editor and terminates the program.
 func (e *Editor) Quit() {
 	if e.Dirty {
-		a, _ := e.Ask("File has unsaved changes - quit anyways? [Y/N]: ", "")
+		choices := []rune{'y', 'n'}
+		a, _ := e.AskChar("Save changes? [Y=Save / N=Quit / Ctrl+C=Cancel]: ", choices)
 		switch a {
-		case "Y", "y":
+		case 'Y', 'y':
+			defer e.Save(); return
+		case 'N', 'n':
 			break
 		default:
 			return
@@ -150,25 +153,15 @@ func (e *Editor) Open(path string) {
 	e.FileName = path
 	e.FileType = GuessFileType(path)
 
-	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		_, err := os.Create(path)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	f, err := os.Open(path)
-	if err != nil {
-		e.InsertLine(0, "")
-		e.SetStatusMessage("Error: Couldn't open file: %v (%v)", path, err)
-		return
-	}
-
 	// Read the file line by line and append each line to end of the buffer.
-	s := bufio.NewScanner(f)
-	for s.Scan() {
-		e.InsertLine(len(e.Buffer), s.Text())
+	f, err := os.Open(path)
+	if err != nil && !os.IsNotExist(err) {
+		e.SetStatusMessage("Error: Couldn't open file: %v (%v)", path, err)
+	} else {
+		s := bufio.NewScanner(f)
+		for s.Scan() {
+			e.InsertLine(len(e.Buffer), s.Text())
+		}
 	}
 
 	// If the file is completely empty, add an empty line to the buffer.
@@ -591,6 +584,41 @@ func (e *Editor) Ask(q, a string) (string, error) {
 				e.InsertPromptChar(' ')
 			default:
 				e.InsertPromptChar(event.Ch)
+			}
+		}
+	}
+}
+
+func (e *Editor) AskChar(q string, choices []rune) (rune, error) {
+	savedX, savedY := e.CursorX, e.CursorY
+
+	defer func() {
+		e.CursorX, e.CursorY = savedX, savedY
+		e.PromptActive = false
+	}()
+
+	e.PromptActive = true
+	e.Question, e.Answer = q, ""
+
+	e.CursorY = e.Height
+	e.CursorX = len(e.Question) + len(e.Answer)
+
+	for {
+		e.Draw()
+
+		switch event := termbox.PollEvent(); event.Type {
+		case termbox.EventKey:
+			switch event.Key {
+			case termbox.KeyEsc, termbox.KeyCtrlC:
+				return '\x00', errors.New("user cancelled")
+			default:
+				if IsInsertable(event.Ch) {
+					for _, r := range choices {
+						if r == event.Ch {
+							return r, nil
+						}
+					}
+				}
 			}
 		}
 	}
