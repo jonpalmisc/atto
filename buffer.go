@@ -1,95 +1,107 @@
 package main
 
-import (
-	"strings"
-)
+type Buffer struct {
+	Editor *Editor
 
-// BufferLine represents a single line in a buffer.
-type BufferLine struct {
-	Editor       *Editor
-	Text         string
-	DisplayText  string
-	Highlighting []HighlightType
+	Lines []BufferLine
+	Dirty  bool
+
+	// The cursor's position. The Y value must always be decremented by one when
+	// accessing buffer elements since the editor's title bar occupies the first
+	// row of the screen. CursorDX is the cursor's X position, with compensation
+	// for extra space introduced by rendering tabs.
+	CursorX  int
+	CursorDX int
+	CursorY  int
+
+	// The viewport's column and row offsets.
+	OffsetX int
+	OffsetY int
+
+	// The name and type of the file currently being edited.
+	FileName string
+	FileType FileType
 }
 
-// MakeBufferLine creates a new BufferLine with the given text.
-func MakeBufferLine(editor *Editor, text string) (bl BufferLine) {
-	bl = BufferLine{
+func MakeBuffer(editor *Editor) Buffer {
+	return Buffer{
 		Editor: editor,
-		Text:   text,
+		CursorY: 1,
 	}
-
-	bl.Update()
-	return bl
 }
 
-// InsertChar inserts a character into the line at the given index.
-func (l *BufferLine) InsertChar(i int, c rune) {
+func (b *Buffer) Length() int {
+	return len(b.Lines)
+}
 
-	// If a tab is being inserted and the editor is using soft tabs insert a
-	// tab's width worth of spaces instead.
-	if c == '\t' && l.Editor.Config.SoftTabs {
-		l.Text = l.Text[:i] + strings.Repeat(" ", l.Editor.Config.TabSize) + l.Text[i:]
-		l.Editor.CursorX += l.Editor.Config.TabSize - 1
+func (b *Buffer) CurrentRow() *BufferLine {
+	return &b.Lines[b.CursorY-1]
+}
+
+// InsertLine inserts a new line to the buffer at the given index.
+func (b *Buffer) InsertLine(i int, text string) {
+
+	// Ensure the index we are trying to insert at is valid.
+	if i >= 0 && i <= len(b.Lines) {
+
+		// https://github.com/golang/go/wiki/SliceTricks
+		b.Lines = append(b.Lines, BufferLine{})
+		copy(b.Lines[i+1:], b.Lines[i:])
+		b.Lines[i] = MakeBufferLine(b, text)
+	}
+}
+
+
+// RemoveLine removes the line at the given index from the buffer.
+func (b *Buffer) RemoveLine(i int) {
+	if i >= 0 && i < len(b.Lines) {
+		b.Lines = append(b.Lines[:i], b.Lines[i+1:]...)
+		b.Dirty = true
+	}
+}
+
+// BreakLine inserts a newline character and breaks the line at the cursor.
+func (b *Buffer) BreakLine() {
+	if b.CursorX == 0 {
+		b.InsertLine(b.CursorY-1, "")
+		b.CursorX = 0
 	} else {
-		l.Text = l.Text[:i] + string(c) + l.Text[i:]
+		text := b.CurrentRow().Text
+		indent := b.CurrentRow().IndentLength()
+
+		b.InsertLine(b.CursorY, text[:indent]+text[b.CursorX:])
+		b.CurrentRow().Text = text[:b.CursorX]
+		b.CurrentRow().Update()
+
+		b.CursorX = indent
 	}
 
-	l.Update()
+	b.CursorY++
+	b.Dirty = true
 }
 
-// DeleteChar deletes a character from the line at the given index.
-func (l *BufferLine) DeleteChar(i int) {
-	if i >= 0 && i < len(l.Text) {
-		l.Text = l.Text[:i] + l.Text[i+1:]
-		l.Update()
-	}
-}
-
-// AppendString appends a string to the line.
-func (l *BufferLine) AppendString(s string) {
-	l.Text += s
-	l.Update()
-}
-
-// Update refreshes the DisplayText field.
-func (l *BufferLine) Update() {
-	// Expand tabs to spaces.
-	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Editor.Config.TabSize))
-
-	l.Highlighting = make([]HighlightType, len(l.DisplayText))
-
-	if l.Editor.Config.UseHighlighting {
-		switch l.Editor.FileType {
-		case FileTypeC, FileTypeCPP:
-			HighlightLine(l, &SyntaxC)
-		case FileTypeGo:
-			HighlightLine(l, &SyntaxGo)
-		}
+// InsertChar inserts a character at the cursor's position.
+func (b *Buffer) InsertChar(c rune) {
+	if IsInsertable(c) {
+		b.CurrentRow().InsertChar(b.CursorX, c)
+		b.CursorX++
+		b.Dirty = true
 	}
 }
 
-// AdjustX corrects the cursor's X position to compensate for rendering effects.
-func (l *BufferLine) AdjustX(x int) int {
-	tabSize := l.Editor.Config.TabSize
-	delta := 0
-
-	for _, c := range l.Text[:x] {
-		if c == '\t' {
-			delta += (tabSize - 1) - (delta % tabSize)
-		}
-
-		delta++
+// DeleteChar deletes the character to the left of the cursor.
+func (b *Buffer) DeleteChar() {
+	if b.CursorX == 0 && b.CursorY-1 == 0 {
+		return
+	} else if b.CursorX > 0 {
+		b.CurrentRow().DeleteChar(b.CursorX - 1)
+		b.CursorX--
+	} else {
+		b.CursorX = len(b.Lines[b.CursorY-2].Text)
+		b.Lines[b.CursorY-2].AppendString(b.CurrentRow().Text)
+		b.RemoveLine(b.CursorY - 1)
+		b.CursorY--
 	}
 
-	return delta
-}
-
-// IndentLength gets the line's level of indentation in columns.
-func (l *BufferLine) IndentLength() (indent int) {
-	for j := 0; j < len(l.Text) && (l.Text[j] == ' ' || l.Text[j] == '\t'); j++ {
-		indent++
-	}
-
-	return indent
+	b.Dirty = true
 }
