@@ -1,10 +1,21 @@
 package main
 
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"os"
+)
+
 type Buffer struct {
 	Editor *Editor
 
+	// The name and type of the file currently being edited.
+	FileName string
+	FileType FileType
+
 	Lines []BufferLine
-	Dirty  bool
+	Dirty bool
 
 	// The cursor's position. The Y value must always be decremented by one when
 	// accessing buffer elements since the editor's title bar occupies the first
@@ -17,17 +28,35 @@ type Buffer struct {
 	// The viewport's column and row offsets.
 	OffsetX int
 	OffsetY int
-
-	// The name and type of the file currently being edited.
-	FileName string
-	FileType FileType
 }
 
-func MakeBuffer(editor *Editor) Buffer {
-	return Buffer{
-		Editor: editor,
-		CursorY: 1,
+func CreateBuffer(editor *Editor, path string) (Buffer, error) {
+	b := Buffer{
+		Editor:   editor,
+		FileName: path,
+		FileType: GuessFileType(path),
+		CursorY:  1,
 	}
+
+	// Read the file line by line and append each line to end of the buffer.
+	f, err := os.Open(path)
+	if err != nil && !os.IsNotExist(err) {
+		return Buffer{}, errors.New(fmt.Sprintf("%v (%v)", path, err))
+	} else {
+		s := bufio.NewScanner(f)
+		for s.Scan() {
+			b.InsertLine(b.Length(), s.Text())
+		}
+	}
+
+	// If the file is completely empty, add an empty line to the buffer.
+	if len(b.Lines) == 0 {
+		b.InsertLine(0, "")
+	}
+
+	f.Close()
+
+	return b, nil
 }
 
 func (b *Buffer) Length() int {
@@ -50,7 +79,6 @@ func (b *Buffer) InsertLine(i int, text string) {
 		b.Lines[i] = MakeBufferLine(b, text)
 	}
 }
-
 
 // RemoveLine removes the line at the given index from the buffer.
 func (b *Buffer) RemoveLine(i int) {

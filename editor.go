@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -13,7 +12,7 @@ import (
 
 // Editor is the editor instance and manages the UI.
 type Editor struct {
-	Buffers []Buffer
+	Buffers    []Buffer
 	FocusIndex int
 
 	// The editor's height and width measured in rows and columns, respectively.
@@ -53,12 +52,13 @@ func MakeEditor() Editor {
 func (e *Editor) Quit() {
 
 	// TODO: Make this check all buffers not just the focused one!
-	if e.FocusedBuffer().Dirty {
+	if e.FB().Dirty {
 		choices := []rune{'y', 'n'}
 		a, _ := e.AskChar("Save changes? [Y=Save / N=Quit / Ctrl+C=Cancel]: ", choices)
 		switch a {
 		case 'Y', 'y':
-			defer e.Save(); return
+			defer e.Save()
+			return
 		case 'N', 'n':
 			break
 		default:
@@ -94,50 +94,49 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 			e.Quit()
 		case termbox.KeyCtrlO:
 			e.Save()
-		case termbox.KeyCtrlN:
-			if e.FocusIndex + 1 < e.BufferCount() {
+		case termbox.KeyCtrlR:
+			e.Open()
+		case termbox.KeyCtrlP:
+			if e.FocusIndex+1 < e.BufferCount() {
 				e.FocusIndex++
 			}
-		case termbox.KeyCtrlP:
+		case termbox.KeyCtrlL:
 			if e.FocusIndex > 0 {
 				e.FocusIndex--
 			}
 		case termbox.KeyDelete:
 		case termbox.KeyBackspace:
 		case termbox.KeyBackspace2:
-			e.FocusedBuffer().DeleteChar()
+			e.FB().DeleteChar()
 		case termbox.KeyEnter:
-			e.FocusedBuffer().BreakLine()
+			e.FB().BreakLine()
 		case termbox.KeyTab:
-			e.FocusedBuffer().InsertChar('\t')
+			e.FB().InsertChar('\t')
 		case termbox.KeySpace:
-			e.FocusedBuffer().InsertChar(' ')
+			e.FB().InsertChar(' ')
 		default:
-			e.FocusedBuffer().InsertChar(event.Ch)
+			e.FB().InsertChar(event.Ch)
 		}
 	}
 }
 
 // Run starts the editor.
 func (e *Editor) Run(args []string) {
-	e.FocusIndex = 0
 
+	// If we have arguments, create a new buffer for each argument.
 	if len(args) != 0 {
-		for _, a := range args {
-			e.Open(a)
+		for _, file := range args {
+			e.Read(file)
 		}
 
-
-		e.FocusedBuffer().CursorY = 1
+		e.FB().CursorY = 1
 	} else {
-		e.Buffers = []Buffer{MakeBuffer(e)}
+		b, err := CreateBuffer(e, "Untitled")
+		if err != nil {
+			panic(err)
+		}
 
-		fb := e.FocusedBuffer()
-		fb.CursorY = 1
-		fb.InsertLine(0, "")
-		fb.FileName = "Untitled"
-		fb.Dirty = true
-		fb.FileType = FileTypeUnknown
+		e.Buffers = []Buffer{b}
 	}
 
 	e.Draw()
@@ -150,38 +149,30 @@ func (e *Editor) Run(args []string) {
 
 /* ---------------------------------- I/O ----------------------------------- */
 
-// Open reads a file into a new buffer.
-func (e *Editor) Open(path string) {
-	buffer := MakeBuffer(e)
-
-	buffer.FileName = path
-	buffer.FileType = GuessFileType(path)
-
-	// Read the file line by line and append each line to end of the buffer.
-	f, err := os.Open(path)
-	if err != nil && !os.IsNotExist(err) {
-		e.SetStatusMessage("Error: Couldn't open file: %v (%v)", path, err)
+// Read reads a file into a new buffer.
+func (e *Editor) Read(path string) {
+	b, err := CreateBuffer(e, path)
+	if err != nil {
+		e.SetStatusMessage("Error: %v", err)
 	} else {
-		s := bufio.NewScanner(f)
-		for s.Scan() {
-			buffer.InsertLine(len(buffer.Lines), s.Text())
-		}
+		e.Buffers = append(e.Buffers, b)
+	}
+}
+
+func (e *Editor) Open() {
+	filename, err := e.Ask("Read file: ", "")
+	if err != nil {
+		e.SetStatusMessage("User cancelled operation.")
+		return
 	}
 
-	// If the file is completely empty, add an empty line to the buffer.
-	if len(buffer.Lines) == 0 {
-		buffer.InsertLine(0, "")
-	}
-
-	e.Buffers = append(e.Buffers, buffer)
-
-	// The file can now be closed since it is loaded into memory.
-	f.Close()
+	e.Read(filename)
+	e.FocusIndex = e.BufferCount() - 1
 }
 
 // Save writes the current buffer back to the file it was read from.
 func (e *Editor) Save() {
-	filename, err := e.Ask("Save as: ", e.FocusedBuffer().FileName)
+	filename, err := e.Ask("Save as: ", e.FB().FileName)
 	if err != nil {
 		e.SetStatusMessage("Save cancelled.")
 		return
@@ -190,18 +181,19 @@ func (e *Editor) Save() {
 	var text string
 
 	// Append each line of the buffer (plus a newline) to the string.
-	bufferLen := e.FocusedBuffer().Length()
+	bufferLen := e.FB().Length()
 	for i := 0; i < bufferLen; i++ {
-		text += e.FocusedBuffer().Lines[i].Text + "\n"
+		text += e.FB().Lines[i].Text + "\n"
 	}
 
 	if err := ioutil.WriteFile(filename, []byte(text), 0644); err != nil {
 		e.SetStatusMessage("Error: %v.", err)
 	} else {
 		e.SetStatusMessage("File saved successfully. (%v)", filename)
-		e.FocusedBuffer().FileName = filename
-		e.FocusedBuffer().FileType = GuessFileType(filename)
-		e.FocusedBuffer().Dirty = false
+
+		e.FB().FileName = filename
+		e.FB().FileType = GuessFileType(filename)
+		e.FB().Dirty = false
 	}
 }
 
@@ -210,20 +202,20 @@ func (e *Editor) Save() {
 // InsertPromptChar is a variant of InsertChar for modifying the prompt answer.
 func (e *Editor) InsertPromptChar(c rune) {
 	if IsInsertable(c) {
-		i := e.FocusedBuffer().CursorX - len(e.Question)
+		i := e.FB().CursorX - len(e.Question)
 
 		e.Answer = e.Answer[:i] + string(c) + e.Answer[i:]
-		e.FocusedBuffer().CursorX++
+		e.FB().CursorX++
 	}
 }
 
 // DeletePromptChar is a variant of DeleteChar for modifying the prompt answer.
 func (e *Editor) DeletePromptChar() {
-	x := e.FocusedBuffer().CursorX - len(e.Question) - 1
+	x := e.FB().CursorX - len(e.Question) - 1
 
 	if x >= 0 && x < len(e.Answer) {
 		e.Answer = e.Answer[:x] + e.Answer[x+1:]
-		e.FocusedBuffer().CursorX--
+		e.FB().CursorX--
 	}
 }
 
@@ -232,17 +224,17 @@ func (e *Editor) DeletePromptChar() {
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
 	banner := ProgramName + " " + ProgramVersion
-	time := time.Now().Local().Format("2006-01-02 15:04")
+	systemTime := time.Now().Local().Format("2006-01-02 15:04")
 
 	indicator := ""
-	if e.FocusedBuffer().Dirty {
+	if e.FB().Dirty {
 		indicator = "*"
 	}
 
-	name := fmt.Sprintf("%v%v (%v/%v)", indicator, e.FocusedBuffer().FileName, e.FocusIndex+1, e.BufferCount())
+	name := fmt.Sprintf("%v%v (%v/%v)", indicator, e.FB().FileName, e.FocusIndex+1, e.BufferCount())
 
 	nameLen := len(name)
-	timeLen := len(time)
+	timeLen := len(systemTime)
 
 	// Draw the title bar canvas.
 	for x := 0; x < e.Width; x++ {
@@ -262,9 +254,9 @@ func (e *Editor) DrawTitleBar() {
 			termbox.ColorBlack, termbox.ColorWhite)
 	}
 
-	// Draw the time on the right.
+	// Draw the system time on the right.
 	for x := 0; x < timeLen; x++ {
-		termbox.SetCell(e.Width-timeLen+x, 0, rune(time[x]),
+		termbox.SetCell(e.Width-timeLen+x, 0, rune(systemTime[x]),
 			termbox.ColorBlack, termbox.ColorWhite)
 	}
 }
@@ -272,14 +264,14 @@ func (e *Editor) DrawTitleBar() {
 // DrawBuffer draws the editor's focused buffer.
 func (e *Editor) DrawBuffer() {
 	for y := 0; y < e.Height-2; y++ {
-		bufferRow := y + e.FocusedBuffer().OffsetY
+		bufferRow := y + e.FB().OffsetY
 
-		if bufferRow < e.FocusedBuffer().Length() {
-			line := e.FocusedBuffer().Lines[bufferRow]
-			length := len(line.DisplayText) - e.FocusedBuffer().OffsetX
+		if bufferRow < e.FB().Length() {
+			line := e.FB().Lines[bufferRow]
+			length := len(line.DisplayText) - e.FB().OffsetX
 
 			if length > 0 {
-				for x, c := range line.DisplayText[e.FocusedBuffer().OffsetX : e.FocusedBuffer().OffsetX+length] {
+				for x, c := range line.DisplayText[e.FB().OffsetX : e.FB().OffsetX+length] {
 					termbox.SetCell(x, y+1, c, line.Highlighting[x].Color(), 0)
 				}
 			}
@@ -296,7 +288,7 @@ func (e *Editor) DrawStatusBar() {
 		left = e.StatusMessage
 	}
 
-	right := fmt.Sprintf(" | %v | Line %v, Column %v", e.FocusedBuffer().FileType, e.FocusedBuffer().CursorY, e.FocusedBuffer().CursorDX+1)
+	right := fmt.Sprintf(" | %v | Line %v, Column %v", e.FB().FileType, e.FB().CursorY, e.FB().CursorDX+1)
 
 	leftLen := len(left)
 	rightLen := len(right)
@@ -334,9 +326,9 @@ func (e *Editor) Draw() {
 	e.DrawStatusBar()
 
 	if e.PromptActive {
-		termbox.SetCursor(e.FocusedBuffer().CursorX, e.Height)
+		termbox.SetCursor(e.FB().CursorX, e.Height)
 	} else {
-		termbox.SetCursor(e.FocusedBuffer().CursorDX-e.FocusedBuffer().OffsetX, e.FocusedBuffer().CursorY-e.FocusedBuffer().OffsetY)
+		termbox.SetCursor(e.FB().CursorDX-e.FB().OffsetX, e.FB().CursorY-e.FB().OffsetY)
 	}
 }
 
@@ -381,22 +373,22 @@ func (e *Editor) ScrollView() {
 		return
 	}
 
-	e.FocusedBuffer().CursorDX = e.FocusedBuffer().CurrentRow().AdjustX(e.FocusedBuffer().CursorX)
+	e.FB().CursorDX = e.FB().CurrentRow().AdjustX(e.FB().CursorX)
 
-	if e.FocusedBuffer().CursorY-1 < e.FocusedBuffer().OffsetY {
-		e.FocusedBuffer().OffsetY = e.FocusedBuffer().CursorY - 1
+	if e.FB().CursorY-1 < e.FB().OffsetY {
+		e.FB().OffsetY = e.FB().CursorY - 1
 	}
 
-	if e.FocusedBuffer().CursorY+2 >= e.FocusedBuffer().OffsetY+e.Height {
-		e.FocusedBuffer().OffsetY = e.FocusedBuffer().CursorY - e.Height + 2
+	if e.FB().CursorY+2 >= e.FB().OffsetY+e.Height {
+		e.FB().OffsetY = e.FB().CursorY - e.Height + 2
 	}
 
-	if e.FocusedBuffer().CursorDX < e.FocusedBuffer().OffsetX {
-		e.FocusedBuffer().OffsetX = e.FocusedBuffer().CursorDX
+	if e.FB().CursorDX < e.FB().OffsetX {
+		e.FB().OffsetX = e.FB().CursorDX
 	}
 
-	if e.FocusedBuffer().CursorDX >= e.FocusedBuffer().OffsetX+e.Width {
-		e.FocusedBuffer().OffsetX = e.FocusedBuffer().CursorDX - e.Width + 1
+	if e.FB().CursorDX >= e.FB().OffsetX+e.Width {
+		e.FB().OffsetX = e.FB().CursorDX - e.Width + 1
 	}
 }
 
@@ -404,86 +396,89 @@ func (e *Editor) ScrollView() {
 func (e *Editor) MoveCursor(move CursorMove) {
 	switch move {
 	case CursorMoveUp:
-		if e.FocusedBuffer().CursorY > 1 {
-			e.FocusedBuffer().CursorY--
+		if e.FB().CursorY > 1 {
+			e.FB().CursorY--
 		}
 	case CursorMoveDown:
-		if e.FocusedBuffer().CursorY < e.FocusedBuffer().Length() {
-			e.FocusedBuffer().CursorY++
+		if e.FB().CursorY < e.FB().Length() {
+			e.FB().CursorY++
 		}
 	case CursorMoveLeft:
-		if e.FocusedBuffer().CursorX != 0 {
-			e.FocusedBuffer().CursorX--
-		} else if e.FocusedBuffer().CursorY > 1 {
-			e.FocusedBuffer().CursorY--
-			e.FocusedBuffer().CursorX = len(e.FocusedBuffer().CurrentRow().Text)
+		if e.FB().CursorX != 0 {
+			e.FB().CursorX--
+		} else if e.FB().CursorY > 1 {
+			e.FB().CursorY--
+			e.FB().CursorX = len(e.FB().CurrentRow().Text)
 		}
 	case CursorMoveRight:
-		if e.FocusedBuffer().CursorX < len(e.FocusedBuffer().CurrentRow().Text) {
-			e.FocusedBuffer().CursorX++
-		} else if e.FocusedBuffer().CursorX == len(e.FocusedBuffer().CurrentRow().Text) && e.FocusedBuffer().CursorY != e.FocusedBuffer().Length() {
-			e.FocusedBuffer().CursorX = 0
-			e.FocusedBuffer().CursorY++
+		if e.FB().CursorX < len(e.FB().CurrentRow().Text) {
+			e.FB().CursorX++
+		} else if e.FB().CursorX == len(e.FB().CurrentRow().Text) && e.FB().CursorY != e.FB().Length() {
+			e.FB().CursorX = 0
+			e.FB().CursorY++
 		}
 	case CursorMoveLineStart:
 
 		// Move the cursor to the end of the indent if the cursor is not there
 		// already, otherwise, move it to the start of the line.
-		if e.FocusedBuffer().CursorX != e.FocusedBuffer().CurrentRow().IndentLength() {
-			e.FocusedBuffer().CursorX = e.FocusedBuffer().CurrentRow().IndentLength()
+		if e.FB().CursorX != e.FB().CurrentRow().IndentLength() {
+			e.FB().CursorX = e.FB().CurrentRow().IndentLength()
 		} else {
-			e.FocusedBuffer().CursorX = 0
+			e.FB().CursorX = 0
 		}
 	case CursorMoveLineEnd:
-		e.FocusedBuffer().CursorX = len(e.FocusedBuffer().CurrentRow().Text)
+		e.FB().CursorX = len(e.FB().CurrentRow().Text)
 	case CursorMovePageUp:
-		if e.Height > e.FocusedBuffer().CursorY {
-			e.FocusedBuffer().CursorY = 1
+		if e.Height > e.FB().CursorY {
+			e.FB().CursorY = 1
 		} else {
-			e.FocusedBuffer().CursorY -= e.Height - 2
+			e.FB().CursorY -= e.Height - 2
 		}
 	case CursorMovePageDown:
-		e.FocusedBuffer().CursorY += e.Height - 2
-		e.FocusedBuffer().OffsetY += e.Height
+		e.FB().CursorY += e.Height - 2
+		e.FB().OffsetY += e.Height
 
-		if e.FocusedBuffer().CursorY > e.FocusedBuffer().Length() {
-			e.FocusedBuffer().CursorY = e.FocusedBuffer().Length() - 1
+		if e.FB().CursorY > e.FB().Length() {
+			e.FB().CursorY = e.FB().Length() - 1
 		}
 	}
 
 	// Prevent the user from moving past the end of the line.
-	rowLength := len(e.FocusedBuffer().CurrentRow().Text)
-	if e.FocusedBuffer().CursorX > rowLength {
-		e.FocusedBuffer().CursorX = rowLength
+	rowLength := len(e.FB().CurrentRow().Text)
+	if e.FB().CursorX > rowLength {
+		e.FB().CursorX = rowLength
 	}
 }
 
 // MovePromptCursor moves the cursor inside of the current prompt.
 func (e *Editor) MovePromptCursor(move CursorMove) {
-	x := e.FocusedBuffer().CursorX - len(e.Question)
+	x := e.FB().CursorX - len(e.Question)
 
 	switch move {
 	case CursorMoveLeft:
 		if x != 0 {
-			e.FocusedBuffer().CursorX--
+			e.FB().CursorX--
 		}
 	case CursorMoveRight:
 		if x < len(e.Answer) {
-			e.FocusedBuffer().CursorX++
+			e.FB().CursorX++
 		}
 	}
 }
 
 /* -------------------------------- Internal -------------------------------- */
 
+// BufferCount is a shorthand for getting the number of open buffers.
 func (e *Editor) BufferCount() int {
 	return len(e.Buffers)
 }
 
-func (e *Editor) FocusedBuffer() *Buffer {
+// FB returns the focused buffer.
+func (e *Editor) FB() *Buffer {
 	return &e.Buffers[e.FocusIndex]
 }
 
+// DirtyBufferCount returns the number of dirty buffers.
 func (e *Editor) DirtyBufferCount() (count int) {
 	for _, b := range e.Buffers {
 		if b.Dirty {
@@ -503,18 +498,18 @@ func (e *Editor) SetStatusMessage(format string, args ...interface{}) {
 // Ask prompts the user to answer a question and assumes control over all input
 // until the question is answered or the request is cancelled.
 func (e *Editor) Ask(q, a string) (string, error) {
-	savedX, savedY := e.FocusedBuffer().CursorX, e.FocusedBuffer().CursorY
+	savedX, savedY := e.FB().CursorX, e.FB().CursorY
 
 	defer func() {
-		e.FocusedBuffer().CursorX, e.FocusedBuffer().CursorY = savedX, savedY
+		e.FB().CursorX, e.FB().CursorY = savedX, savedY
 		e.PromptActive = false
 	}()
 
 	e.PromptActive = true
 	e.Question, e.Answer = q, a
 
-	e.FocusedBuffer().CursorY = e.Height
-	e.FocusedBuffer().CursorX = len(e.Question) + len(e.Answer)
+	e.FB().CursorY = e.Height
+	e.FB().CursorX = len(e.Question) + len(e.Answer)
 
 	for {
 		e.Draw()
@@ -522,7 +517,7 @@ func (e *Editor) Ask(q, a string) (string, error) {
 		switch event := termbox.PollEvent(); event.Type {
 		case termbox.EventKey:
 			switch event.Key {
-			case termbox.KeyEsc, termbox.KeyCtrlX:
+			case termbox.KeyEsc, termbox.KeyCtrlC:
 				return "", errors.New("user cancelled")
 			case termbox.KeyArrowLeft:
 				e.MovePromptCursor(CursorMoveLeft)
@@ -542,18 +537,18 @@ func (e *Editor) Ask(q, a string) (string, error) {
 }
 
 func (e *Editor) AskChar(q string, choices []rune) (rune, error) {
-	savedX, savedY := e.FocusedBuffer().CursorX, e.FocusedBuffer().CursorY
+	savedX, savedY := e.FB().CursorX, e.FB().CursorY
 
 	defer func() {
-		e.FocusedBuffer().CursorX, e.FocusedBuffer().CursorY = savedX, savedY
+		e.FB().CursorX, e.FB().CursorY = savedX, savedY
 		e.PromptActive = false
 	}()
 
 	e.PromptActive = true
 	e.Question, e.Answer = q, ""
 
-	e.FocusedBuffer().CursorY = e.Height
-	e.FocusedBuffer().CursorX = len(e.Question) + len(e.Answer)
+	e.FB().CursorY = e.Height
+	e.FB().CursorX = len(e.Question) + len(e.Answer)
 
 	for {
 		e.Draw()
