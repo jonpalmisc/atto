@@ -61,15 +61,13 @@ func (e *Editor) Close(i int) {
 	b := &e.Buffers[i]
 
 	if b.IsDirty {
-		a, _ := e.AskRune("Save changes? [Y/N]: ", []rune{'y', 'n'})
-
-		switch a {
-		case 'y':
+		switch e.AskBool("Save changes? [Y/N]: ") {
+		case BoolAnswerYes:
 			defer e.Save()
 			return
-		case 'n':
+		case BoolAnswerNo:
 			break
-		default:
+		case BoolAnswerCancel:
 			return
 		}
 	}

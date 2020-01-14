@@ -2,6 +2,7 @@ package editor
 
 import (
 	"errors"
+	"unicode"
 
 	"github.com/jonpalmisc/atto/internal/buffer"
 	"github.com/nsf/termbox-go"
@@ -98,42 +99,48 @@ func (e *Editor) MovePromptCursor(move CursorMove) {
 	}
 }
 
+// restoreCursor just sets the cursor position but this function is meant to be
+// called using defer inside prompt-related methods.
+func (e *Editor) restoreCursor(x, y int) {
+	e.FB().CursorX, e.FB().CursorY = x, y
+}
+
+// activatePrompt opens the prompt and moves the cursor to the prompt.
+func (e *Editor) activatePrompt(question, answer string) {
+	e.PromptQuestion, e.PromptAnswer, e.PromptIsActive = question, answer, true
+	e.FB().CursorY, e.FB().CursorX = e.Height, len(question) + len(answer)
+}
+
+// closePrompt is just syntactic sugar for setting PromptIsActive to false, but
+// it is meant to be called using defer inside prompt-related methods.
+func (e *Editor) closePrompt() {
+	e.PromptIsActive = false
+}
+
 // Ask prompts the user to answer a question and assumes control over all input
 // until the question is answered or the request is cancelled.
-func (e *Editor) Ask(q, a string) (string, error) {
-
-	// Save the current cursor position so it can be restored later.
-	savedX, savedY := e.FB().CursorX, e.FB().CursorY
+func (e *Editor) Ask(question, answer string) (string, error) {
 
 	// Restore the cursor position and close the prompt when the function exits.
-	defer func() {
-		e.FB().CursorX, e.FB().CursorY = savedX, savedY
-		e.PromptIsActive = false
-	}()
+	defer e.restoreCursor(e.FB().CursorX, e.FB().CursorY)
+	defer e.closePrompt()
 
-	// Activate and update the prompt.
-	e.PromptIsActive = true
-	e.PromptQuestion, e.PromptAnswer = q, a
-
-	// Move the cursor to the prompt.
-	e.FB().CursorY = e.Height
-	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
-
-	// Keep polling events until the user responds or cancels.
+	// Activate the prompt and poll events until the user responds or cancels.
+	e.activatePrompt(question, answer)
 	for {
 		e.Draw()
 
 		switch event := termbox.PollEvent(); event.Type {
 		case termbox.EventKey:
 			switch event.Key {
-			case termbox.KeyEsc, termbox.KeyCtrlC:
+			case termbox.KeyCtrlC:
 				return "", errors.New("user cancelled")
+			case termbox.KeyEnter:
+				return e.PromptAnswer, nil
 			case termbox.KeyArrowLeft:
 				e.MovePromptCursor(CursorMoveLeft)
 			case termbox.KeyArrowRight:
 				e.MovePromptCursor(CursorMoveRight)
-			case termbox.KeyEnter:
-				return e.PromptAnswer, nil
 			case termbox.KeyBackspace2:
 				e.DeletePromptRune()
 			case termbox.KeySpace:
@@ -145,42 +152,44 @@ func (e *Editor) Ask(q, a string) (string, error) {
 	}
 }
 
-// AskRune prompts the user to respond to a question with a single rune.
-func (e *Editor) AskRune(q string, choices []rune) (rune, error) {
+// BoolAnswer represents a boolean answer choice.
+type BoolAnswer int
 
-	// Save the current cursor position so it can be restored later.
-	savedX, savedY := e.FB().CursorX, e.FB().CursorY
+const (
+
+	// BoolAnswerCancel represents a cancelled prompt.
+	BoolAnswerCancel BoolAnswer = -1
+
+	// BoolAnswerNo represents a "No" answer.
+	BoolAnswerNo BoolAnswer = 0
+
+	// BoolAnswerYes represents a "Yes" answer.
+	BoolAnswerYes BoolAnswer = 1
+)
+
+// AskBool asks a yes or no question with the choice of cancelling.
+func (e *Editor) AskBool(question string) BoolAnswer {
 
 	// Restore the cursor position and close the prompt when the function exits.
-	defer func() {
-		e.FB().CursorX, e.FB().CursorY = savedX, savedY
-		e.PromptIsActive = false
-	}()
+	defer e.restoreCursor(e.FB().CursorX, e.FB().CursorY)
+	defer e.closePrompt()
 
-	// Activate and update the prompt.
-	e.PromptIsActive = true
-	e.PromptQuestion, e.PromptAnswer = q, ""
-
-	// Move the cursor to the prompt.
-	e.FB().CursorY = e.Height
-	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
-
-	// Keep polling events until the user responds or cancels.
+	// Activate the prompt and poll events until the user responds or cancels.
+	e.activatePrompt(question, "")
 	for {
 		e.Draw()
 
 		switch event := termbox.PollEvent(); event.Type {
 		case termbox.EventKey:
 			switch event.Key {
-			case termbox.KeyEsc, termbox.KeyCtrlC:
-				return '\x00', errors.New("user cancelled")
+			case termbox.KeyCtrlC:
+				return BoolAnswerCancel
 			default:
-				if buffer.IsInsertable(event.Ch) {
-					for _, r := range choices {
-						if r == event.Ch {
-							return r, nil
-						}
-					}
+				switch unicode.ToUpper(event.Ch) {
+				case 'Y':
+					return BoolAnswerYes
+				case 'N':
+					return BoolAnswerNo
 				}
 			}
 		}
