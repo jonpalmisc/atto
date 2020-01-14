@@ -8,23 +8,7 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Config holds the editor's configuration and settings.
-type Config struct {
-	TabSize         int
-	SoftTabs        bool
-	UseHighlighting bool
-}
-
-// DefaultConfig returns the default configuration.
-func DefaultConfig() Config {
-	return Config{
-		TabSize:         4,
-		SoftTabs:        false,
-		UseHighlighting: true,
-	}
-}
-
-func AttoFolderPath() (string, error) {
+func attoFolderPath() (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", err
@@ -33,9 +17,8 @@ func AttoFolderPath() (string, error) {
 	return filepath.Join(homeDir, ".atto"), nil
 }
 
-// ConfigPath returns the path of Atto's config file on the current platform.
-func ConfigPath() (string, error) {
-	attoFolder, err := AttoFolderPath()
+func configPath() (string, error) {
+	attoFolder, err := attoFolderPath()
 	if err != nil {
 		return "", err
 	}
@@ -43,58 +26,74 @@ func ConfigPath() (string, error) {
 	return filepath.Join(attoFolder, "config.yml"), nil
 }
 
-// LoadConfig attempts to load the user's config
-func LoadConfig() (Config, error) {
-	attoFolderPath, err := AttoFolderPath()
+// Config holds the editor's configuration and settings.
+type Config struct {
+	TabSize         int
+	UseSoftTabs     bool
+	UseHighlighting bool
+}
+
+// Default returns the default configuration.
+func Default() Config {
+	return Config{
+		TabSize:         4,
+		UseSoftTabs:     false,
+		UseHighlighting: true,
+	}
+}
+
+// Load attempts to load the user's config
+func Load() (Config, error) {
+	afPath, err := attoFolderPath()
 	if err != nil {
 		panic(err)
 	}
 
 	// Create the Atto folder if it doesn't exist already
-	if _, err = os.Stat(attoFolderPath); os.IsNotExist(err) {
-		err = os.MkdirAll(attoFolderPath, os.ModePerm)
+	if _, err = os.Stat(afPath); os.IsNotExist(err) {
+		err = os.MkdirAll(afPath, os.ModePerm)
 		if err != nil {
-			return DefaultConfig(), err
+			return Default(), err
 		}
 	}
 
-	configPath, err := ConfigPath()
+	cfgPath, err := configPath()
 	if err != nil {
-		return DefaultConfig(), err
+		return Default(), err
 	}
 
 	// Check if the config file exists. If it does not, create one with the
 	// default values.
-	if _, err := os.Stat(configPath); err != nil {
-		defaultConfig := DefaultConfig()
+	if _, err := os.Stat(cfgPath); err != nil {
+		defaultConfig := Default()
 
 		// Marshal the default config to YAML.
 		yml, err := yaml.Marshal(&defaultConfig)
 		if err != nil {
-			return DefaultConfig(), err
+			return Default(), err
 		}
 
 		// Write the config file.
-		err = ioutil.WriteFile(configPath, yml, 0644)
+		err = ioutil.WriteFile(cfgPath, yml, 0644)
 		if err != nil {
-			return DefaultConfig(), err
+			return Default(), err
 		}
 
-		return DefaultConfig(), nil
+		return Default(), nil
 	}
 
 	// Read the config file into memory or return the default config if there
 	// is an error.
-	yml, err := ioutil.ReadFile(configPath)
+	yml, err := ioutil.ReadFile(cfgPath)
 	if err != nil {
-		return DefaultConfig(), err
+		return Default(), err
 	}
 
 	// Unmarshal the YAML & return the default config if there is an error.
 	config := Config{}
 	err = yaml.Unmarshal(yml, &config)
 	if err != nil {
-		return DefaultConfig(), err
+		return Default(), err
 	}
 
 	return config, nil

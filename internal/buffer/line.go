@@ -26,14 +26,15 @@ func MakeBufferLine(buffer *Buffer, text string) (bl Line) {
 	return bl
 }
 
-// InsertChar inserts a character into the line at the given index.
-func (l *Line) InsertChar(i int, c rune) {
+// InsertRune inserts a rune into the line at the given index.
+func (l *Line) InsertRune(i int, c rune) {
+	tabSize := l.Buffer.Config.TabSize
 
 	// If a tab is being inserted and the editor is using soft tabs insert a
 	// tab's width worth of spaces instead.
-	if c == '\t' && l.Buffer.Config.SoftTabs {
-		l.Text = l.Text[:i] + strings.Repeat(" ", l.Buffer.Config.TabSize) + l.Text[i:]
-		l.Buffer.CursorX += l.Buffer.Config.TabSize - 1
+	if c == '\t' && l.Buffer.Config.UseSoftTabs {
+		l.Text = l.Text[:i] + strings.Repeat(" ", tabSize) + l.Text[i:]
+		l.Buffer.CursorX += tabSize - 1
 	} else {
 		l.Text = l.Text[:i] + string(c) + l.Text[i:]
 	}
@@ -41,8 +42,8 @@ func (l *Line) InsertChar(i int, c rune) {
 	l.Update()
 }
 
-// DeleteChar deletes a character from the line at the given index.
-func (l *Line) DeleteChar(i int) {
+// DeleteRune deletes a rune from the line at the given index.
+func (l *Line) DeleteRune(i int) {
 	if i >= 0 && i < len(l.Text) {
 		l.Text = l.Text[:i] + l.Text[i+1:]
 		l.Update()
@@ -57,11 +58,12 @@ func (l *Line) AppendString(s string) {
 
 // Update refreshes the DisplayText field.
 func (l *Line) Update() {
+
 	// Expand tabs to spaces.
-	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Buffer.Config.TabSize))
+	tabFill := strings.Repeat(" ", l.Buffer.Config.TabSize)
+	l.DisplayText = strings.ReplaceAll(l.Text, "\t", tabFill)
 
 	l.TokenTypes = make([]TokenType, len(l.DisplayText))
-
 	if l.Buffer.Config.UseHighlighting {
 		switch l.Buffer.FileType {
 		case support.FileTypeC, support.FileTypeCPP:
@@ -72,8 +74,8 @@ func (l *Line) Update() {
 	}
 }
 
-// AdjustX corrects the cursor's X position to compensate for rendering effects.
-func (l *Line) AdjustX(x int) int {
+// AdjustedX returns the cursor's X position compensated for tab expansion.
+func (l *Line) AdjustedX(x int) int {
 	tabSize := l.Buffer.Config.TabSize
 	delta := 0
 

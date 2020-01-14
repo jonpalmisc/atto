@@ -41,7 +41,7 @@ func Create() (editor Editor) {
 	}
 
 	// Attempt to load the user's editor configuration.
-	cfg, err := config.LoadConfig()
+	cfg, err := config.Load()
 	if err != nil {
 		editor.SetStatusMessage("Failed to load config! (%v)", err)
 	}

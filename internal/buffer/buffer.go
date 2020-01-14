@@ -133,21 +133,21 @@ func (b *Buffer) BreakLine() {
 	b.IsDirty = true
 }
 
-// InsertChar inserts a character at the cursor's position.
-func (b *Buffer) InsertChar(c rune) {
+// InsertRune inserts a rune at the cursor's position.
+func (b *Buffer) InsertRune(c rune) {
 	if IsInsertable(c) {
-		b.FocusedLine().InsertChar(b.CursorX, c)
+		b.FocusedLine().InsertRune(b.CursorX, c)
 		b.CursorX++
 		b.IsDirty = true
 	}
 }
 
-// DeleteChar deletes the character to the left of the cursor.
-func (b *Buffer) DeleteChar() {
+// DeleteRune deletes the rune to the left of the cursor.
+func (b *Buffer) DeleteRune() {
 	if b.CursorX == 0 && b.CursorY-1 == 0 {
 		return
 	} else if b.CursorX > 0 {
-		b.FocusedLine().DeleteChar(b.CursorX - 1)
+		b.FocusedLine().DeleteRune(b.CursorX - 1)
 		b.CursorX--
 	} else {
 		b.CursorX = len(b.Lines[b.CursorY-2].Text)

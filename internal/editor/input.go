@@ -49,15 +49,15 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 
 		// Handle regular input keys.
 		case termbox.KeyBackspace2:
-			e.FB().DeleteChar()
+			e.FB().DeleteRune()
 		case termbox.KeyEnter:
 			e.FB().BreakLine()
 		case termbox.KeyTab:
-			e.FB().InsertChar('\t')
+			e.FB().InsertRune('\t')
 		case termbox.KeySpace:
-			e.FB().InsertChar(' ')
+			e.FB().InsertRune(' ')
 		default:
-			e.FB().InsertChar(event.Ch)
+			e.FB().InsertRune(event.Ch)
 		}
 	}
 }

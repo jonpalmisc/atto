@@ -105,7 +105,7 @@ func (e *Editor) ScrollView() {
 		return
 	}
 
-	e.FB().CursorDX = e.FB().FocusedLine().AdjustX(e.FB().CursorX)
+	e.FB().CursorDX = e.FB().FocusedLine().AdjustedX(e.FB().CursorX)
 
 	if e.FB().CursorY-1 < e.FB().OffsetY {
 		e.FB().OffsetY = e.FB().CursorY - 1
