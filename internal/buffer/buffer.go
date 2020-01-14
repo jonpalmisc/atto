@@ -3,9 +3,11 @@ package buffer
 import (
 	"bufio"
 	"fmt"
+	"os"
+	"unicode"
+
 	"github.com/jonpalmisc/atto/internal/config"
 	"github.com/jonpalmisc/atto/internal/support"
-	"os"
 )
 
 type Buffer struct {
@@ -72,6 +74,22 @@ func (b *Buffer) FocusedLine() *Line {
 	return &b.Lines[b.CursorY-1]
 }
 
+// IsInsertable tells whether a character is insertable into the buffer or not.
+func IsInsertable(c rune) bool {
+	switch unicode.ToLower(c) {
+	case '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+		'1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+		'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+		'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
+		'z', 'x', 'c', 'v', 'b', 'n', 'm',
+		'`', '~', '-', '=', '+', '\t', '[', '{', ']', '}', '\\', '|',
+		';', ':', '\'', '"', ',', '<', '.', '>', '/', '?', ' ':
+		return true
+	default:
+		return false
+	}
+}
+
 // InsertLine inserts a new line to the buffer at the given index.
 func (b *Buffer) InsertLine(i int, text string) {
 
@@ -115,7 +133,7 @@ func (b *Buffer) BreakLine() {
 
 // InsertChar inserts a character at the cursor's position.
 func (b *Buffer) InsertChar(c rune) {
-	if support.IsInsertable(c) {
+	if IsInsertable(c) {
 		b.FocusedLine().InsertChar(b.CursorX, c)
 		b.CursorX++
 		b.IsDirty = true

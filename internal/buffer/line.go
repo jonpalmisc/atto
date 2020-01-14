@@ -1,9 +1,10 @@
 package buffer
 
 import (
+	"strings"
+
 	"github.com/jonpalmisc/atto/internal/support"
 	"github.com/jonpalmisc/atto/internal/syntax"
-	"strings"
 )
 
 // Line represents a single line in a buffer.

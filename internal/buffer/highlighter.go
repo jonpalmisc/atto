@@ -1,9 +1,9 @@
 package buffer
 
 import (
-	"github.com/jonpalmisc/atto/internal/syntax"
 	"unicode"
 
+	"github.com/jonpalmisc/atto/internal/syntax"
 	"github.com/nsf/termbox-go"
 )
 
