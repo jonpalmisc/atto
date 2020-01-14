@@ -61,7 +61,7 @@ func (e *Editor) Close(i int) {
 	b := &e.Buffers[i]
 
 	if b.IsDirty {
-		a, _ := e.AskChar("Save changes? [Y/N]: ", []rune{'y', 'n'})
+		a, _ := e.AskRune("Save changes? [Y/N]: ", []rune{'y', 'n'})
 
 		switch a {
 		case 'y':

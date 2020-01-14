@@ -4,7 +4,7 @@ import (
 	"strings"
 )
 
-const Version string = "0.4.0"
+const AttoVersion string = "0.4.0"
 
 // FileType represents a type of file.
 type FileType string
@@ -30,7 +30,7 @@ const (
 // GuessFileType attempts to deduce a file's type from its name and extension.
 func GuessFileType(name string) FileType {
 
-	// Handle filetypes which have specific names.
+	// Handle file types which have specific names.
 	switch name {
 	case "Makefile":
 		return FileTypeMakefile

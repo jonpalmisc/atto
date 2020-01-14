@@ -36,7 +36,8 @@ type Editor struct {
 
 // Create creates a new Editor instance.
 func Create() (editor Editor) {
-	if err := termbox.Init(); err != nil {
+	err := termbox.Init()
+	if err != nil {
 		panic(err)
 	}
 
@@ -74,6 +75,7 @@ func (e *Editor) Run(args []string) {
 		e.Buffers = []buffer.Buffer{b}
 	}
 
+	// Perform the initial draw of the UI.
 	e.Draw()
 
 	for {

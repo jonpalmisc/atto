@@ -62,8 +62,8 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 	}
 }
 
-// InsertPromptChar inserts a character into the current prompt answer.
-func (e *Editor) InsertPromptChar(c rune) {
+// InsertPromptRune inserts a rune into the current prompt answer.
+func (e *Editor) InsertPromptRune(c rune) {
 	if buffer.IsInsertable(c) {
 		i := e.FB().CursorX - len(e.PromptQuestion)
 
@@ -72,8 +72,8 @@ func (e *Editor) InsertPromptChar(c rune) {
 	}
 }
 
-// DeletePromptChar removes a character from the current prompt answer.
-func (e *Editor) DeletePromptChar() {
+// DeletePromptRune deletes a rune from the current prompt answer.
+func (e *Editor) DeletePromptRune() {
 	x := e.FB().CursorX - len(e.PromptQuestion) - 1
 
 	if x >= 0 && x < len(e.PromptAnswer) {
@@ -101,19 +101,25 @@ func (e *Editor) MovePromptCursor(move CursorMove) {
 // Ask prompts the user to answer a question and assumes control over all input
 // until the question is answered or the request is cancelled.
 func (e *Editor) Ask(q, a string) (string, error) {
+
+	// Save the current cursor position so it can be restored later.
 	savedX, savedY := e.FB().CursorX, e.FB().CursorY
 
+	// Restore the cursor position and close the prompt when the function exits.
 	defer func() {
 		e.FB().CursorX, e.FB().CursorY = savedX, savedY
 		e.PromptIsActive = false
 	}()
 
+	// Activate and update the prompt.
 	e.PromptIsActive = true
 	e.PromptQuestion, e.PromptAnswer = q, a
 
+	// Move the cursor to the prompt.
 	e.FB().CursorY = e.Height
 	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
 
+	// Keep polling events until the user responds or cancels.
 	for {
 		e.Draw()
 
@@ -129,31 +135,37 @@ func (e *Editor) Ask(q, a string) (string, error) {
 			case termbox.KeyEnter:
 				return e.PromptAnswer, nil
 			case termbox.KeyBackspace2:
-				e.DeletePromptChar()
+				e.DeletePromptRune()
 			case termbox.KeySpace:
-				e.InsertPromptChar(' ')
+				e.InsertPromptRune(' ')
 			default:
-				e.InsertPromptChar(event.Ch)
+				e.InsertPromptRune(event.Ch)
 			}
 		}
 	}
 }
 
-// AskChar prompts the user to respond to a question with a single character.
-func (e *Editor) AskChar(q string, choices []rune) (rune, error) {
+// AskRune prompts the user to respond to a question with a single rune.
+func (e *Editor) AskRune(q string, choices []rune) (rune, error) {
+
+	// Save the current cursor position so it can be restored later.
 	savedX, savedY := e.FB().CursorX, e.FB().CursorY
 
+	// Restore the cursor position and close the prompt when the function exits.
 	defer func() {
 		e.FB().CursorX, e.FB().CursorY = savedX, savedY
 		e.PromptIsActive = false
 	}()
 
+	// Activate and update the prompt.
 	e.PromptIsActive = true
 	e.PromptQuestion, e.PromptAnswer = q, ""
 
+	// Move the cursor to the prompt.
 	e.FB().CursorY = e.Height
 	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
 
+	// Keep polling events until the user responds or cancels.
 	for {
 		e.Draw()
 

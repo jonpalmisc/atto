@@ -4,6 +4,7 @@ package editor
 type CursorMove int
 
 const (
+
 	// CursorMoveUp moves the cursor up one row.
 	CursorMoveUp CursorMove = 0
 
@@ -33,6 +34,8 @@ const (
 
 // MoveCursor moves the cursor according to the operation provided.
 func (e *Editor) MoveCursor(move CursorMove) {
+	rowLength := len(e.FB().FocusedLine().Text)
+
 	switch move {
 	case CursorMoveUp:
 		if e.FB().CursorY > 1 {
@@ -47,12 +50,12 @@ func (e *Editor) MoveCursor(move CursorMove) {
 			e.FB().CursorX--
 		} else if e.FB().CursorY > 1 {
 			e.FB().CursorY--
-			e.FB().CursorX = len(e.FB().FocusedLine().Text)
+			e.FB().CursorX = rowLength
 		}
 	case CursorMoveRight:
-		if e.FB().CursorX < len(e.FB().FocusedLine().Text) {
+		if e.FB().CursorX < rowLength {
 			e.FB().CursorX++
-		} else if e.FB().CursorX == len(e.FB().FocusedLine().Text) && e.FB().CursorY != e.FB().Length() {
+		} else if e.FB().CursorX == rowLength && e.FB().CursorY != e.FB().Length() {
 			e.FB().CursorX = 0
 			e.FB().CursorY++
 		}
@@ -66,7 +69,7 @@ func (e *Editor) MoveCursor(move CursorMove) {
 			e.FB().CursorX = 0
 		}
 	case CursorMoveLineEnd:
-		e.FB().CursorX = len(e.FB().FocusedLine().Text)
+		e.FB().CursorX = rowLength
 	case CursorMovePageUp:
 		if e.Height > e.FB().CursorY {
 			e.FB().CursorY = 1
@@ -83,7 +86,7 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	}
 
 	// Prevent the user from moving past the end of the line.
-	rowLength := len(e.FB().FocusedLine().Text)
+	rowLength = len(e.FB().FocusedLine().Text)
 	if e.FB().CursorX > rowLength {
 		e.FB().CursorX = rowLength
 	}

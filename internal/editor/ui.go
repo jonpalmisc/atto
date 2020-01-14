@@ -10,7 +10,7 @@ import (
 
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
-	info := "Atto " + support.Version
+	info := "Atto " + support.AttoVersion
 	localTime := time.Now().Local().Format("2006-01-02 15:04")
 
 	name := fmt.Sprintf("%v (%v/%v)", e.FB().FileName, e.FocusIndex+1, e.BufferCount())
