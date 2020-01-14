@@ -12,6 +12,8 @@ import (
 
 // Editor is the editor instance and manages the UI.
 type Editor struct {
+
+	// The editor's buffers and the index of the focused buffer.
 	Buffers    []Buffer
 	FocusIndex int
 
@@ -23,17 +25,22 @@ type Editor struct {
 	StatusMessage     string
 	StatusMessageTime time.Time
 
-	PromptActive bool
-	Question     string
-	Answer       string
+	// The prompt question, answer, and whether it is active or not.
+	PromptQuestion string
+	PromptAnswer   string
+	PromptIsActive bool
 
+	// The user's editor configuration.
 	Config Config
 }
 
-// MakeEditor creates a new Editor instance.
-func MakeEditor() Editor {
-	editor := Editor{}
+// CreateEditor creates a new Editor instance.
+func CreateEditor() (editor Editor) {
+	if err := termbox.Init(); err != nil {
+		panic(err)
+	}
 
+	// Attempt to load the user's editor configuration.
 	config, err := LoadConfig()
 	if err != nil {
 		editor.SetStatusMessage("Failed to load config! (%v)", err)
@@ -41,39 +48,22 @@ func MakeEditor() Editor {
 
 	editor.Config = config
 
-	if err = termbox.Init(); err != nil {
-		panic(err)
-	}
-
 	return editor
 }
 
-// Quit closes the editor and terminates the program.
-func (e *Editor) Quit() {
-
-	// TODO: Make this check all buffers not just the focused one!
-	if e.FB().Dirty {
-		choices := []rune{'y', 'n'}
-		a, _ := e.AskChar("Save changes? [Y=Save / N=Quit / Ctrl+C=Cancel]: ", choices)
-		switch a {
-		case 'Y', 'y':
-			defer e.Save()
-			return
-		case 'N', 'n':
-			break
-		default:
-			return
-		}
-	}
-
+// Shutdown tears down the terminal screen and ends the process.
+func (e *Editor) Shutdown() {
 	termbox.Close()
 	os.Exit(0)
 }
 
+// HandleEvent executes the appropriate code in response to an event.
 func (e *Editor) HandleEvent(event termbox.Event) {
 	switch event.Type {
 	case termbox.EventKey:
 		switch event.Key {
+
+		// Handle cursor movement keys.
 		case termbox.KeyArrowUp:
 			e.MoveCursor(CursorMoveUp)
 		case termbox.KeyArrowDown:
@@ -90,12 +80,14 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 			e.MoveCursor(CursorMoveLineStart)
 		case termbox.KeyCtrlE:
 			e.MoveCursor(CursorMoveLineEnd)
-		case termbox.KeyCtrlX:
-			e.Quit()
-		case termbox.KeyCtrlO:
-			e.Save()
+
+		// Handle buffer operation keys.
 		case termbox.KeyCtrlR:
 			e.Open()
+		case termbox.KeyCtrlO:
+			e.Save()
+		case termbox.KeyCtrlW:
+			e.Close(e.FocusIndex)
 		case termbox.KeyCtrlP:
 			if e.FocusIndex+1 < e.BufferCount() {
 				e.FocusIndex++
@@ -104,8 +96,8 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 			if e.FocusIndex > 0 {
 				e.FocusIndex--
 			}
-		case termbox.KeyDelete:
-		case termbox.KeyBackspace:
+
+		// Handle regular input keys.
 		case termbox.KeyBackspace2:
 			e.FB().DeleteChar()
 		case termbox.KeyEnter:
@@ -128,8 +120,6 @@ func (e *Editor) Run(args []string) {
 		for _, file := range args {
 			e.Read(file)
 		}
-
-		e.FB().CursorY = 1
 	} else {
 		b, err := CreateBuffer(e, "Untitled")
 		if err != nil {
@@ -143,6 +133,17 @@ func (e *Editor) Run(args []string) {
 
 	for {
 		e.HandleEvent(termbox.PollEvent())
+
+		// If there are no remaining buffers, terminate the program.
+		if e.BufferCount() == 0 {
+			e.Shutdown()
+		}
+
+		// If the last buffer was just closed, decrement the focus index.
+		if e.FocusIndex >= e.BufferCount() {
+			e.FocusIndex = e.BufferCount() - 1
+		}
+
 		e.Draw()
 	}
 }
@@ -159,8 +160,9 @@ func (e *Editor) Read(path string) {
 	}
 }
 
+// Open prompts the user for a path and creates a new buffer for it.
 func (e *Editor) Open() {
-	filename, err := e.Ask("Read file: ", "")
+	filename, err := e.Ask("Open file: ", "")
 	if err != nil {
 		e.SetStatusMessage("User cancelled operation.")
 		return
@@ -193,28 +195,49 @@ func (e *Editor) Save() {
 
 		e.FB().FileName = filename
 		e.FB().FileType = GuessFileType(filename)
-		e.FB().Dirty = false
+		e.FB().IsDirty = false
 	}
+}
+
+// Close closes the focused buffer.
+func (e *Editor) Close(i int) {
+	b := &e.Buffers[i]
+
+	if b.IsDirty {
+		a, _ := e.AskChar("Save changes? [Y/N]: ", []rune{'y', 'n'})
+
+		switch a {
+		case 'y':
+			defer e.Save()
+			return
+		case 'n':
+			break
+		default:
+			return
+		}
+	}
+
+	e.Buffers = append(e.Buffers[:i], e.Buffers[i+1:]...)
 }
 
 /* --------------------------------- Buffer --------------------------------- */
 
-// InsertPromptChar is a variant of InsertChar for modifying the prompt answer.
+// InsertPromptChar inserts a character into the current prompt answer.
 func (e *Editor) InsertPromptChar(c rune) {
 	if IsInsertable(c) {
-		i := e.FB().CursorX - len(e.Question)
+		i := e.FB().CursorX - len(e.PromptQuestion)
 
-		e.Answer = e.Answer[:i] + string(c) + e.Answer[i:]
+		e.PromptAnswer = e.PromptAnswer[:i] + string(c) + e.PromptAnswer[i:]
 		e.FB().CursorX++
 	}
 }
 
-// DeletePromptChar is a variant of DeleteChar for modifying the prompt answer.
+// DeletePromptChar removes a character from the current prompt answer.
 func (e *Editor) DeletePromptChar() {
-	x := e.FB().CursorX - len(e.Question) - 1
+	x := e.FB().CursorX - len(e.PromptQuestion) - 1
 
-	if x >= 0 && x < len(e.Answer) {
-		e.Answer = e.Answer[:x] + e.Answer[x+1:]
+	if x >= 0 && x < len(e.PromptAnswer) {
+		e.PromptAnswer = e.PromptAnswer[:x] + e.PromptAnswer[x+1:]
 		e.FB().CursorX--
 	}
 }
@@ -223,11 +246,11 @@ func (e *Editor) DeletePromptChar() {
 
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
-	banner := ProgramName + " " + ProgramVersion
+	info := ProgramName + " " + ProgramVersion
 	systemTime := time.Now().Local().Format("2006-01-02 15:04")
 
 	indicator := ""
-	if e.FB().Dirty {
+	if e.FB().IsDirty {
 		indicator = "*"
 	}
 
@@ -241,9 +264,9 @@ func (e *Editor) DrawTitleBar() {
 		termbox.SetCell(x, 0, ' ', termbox.ColorBlack, termbox.ColorWhite)
 	}
 
-	// Draw the banner on the left.
-	for x := 0; x < len(banner); x++ {
-		termbox.SetCell(x, 0, rune(banner[x]),
+	// Draw the info banner on the left.
+	for x := 0; x < len(info); x++ {
+		termbox.SetCell(x, 0, rune(info[x]),
 			termbox.ColorBlack, termbox.ColorWhite)
 	}
 
@@ -282,8 +305,8 @@ func (e *Editor) DrawBuffer() {
 // DrawStatusBar draws the editor's status bar on the bottom of the screen.
 func (e *Editor) DrawStatusBar() {
 	left := ""
-	if e.PromptActive {
-		left = e.Question + e.Answer
+	if e.PromptIsActive {
+		left = e.PromptQuestion + e.PromptAnswer
 	} else if time.Now().Before(e.StatusMessageTime.Add(3 * time.Second)) {
 		left = e.StatusMessage
 	}
@@ -325,7 +348,7 @@ func (e *Editor) Draw() {
 	e.DrawBuffer()
 	e.DrawStatusBar()
 
-	if e.PromptActive {
+	if e.PromptIsActive {
 		termbox.SetCursor(e.FB().CursorX, e.Height)
 	} else {
 		termbox.SetCursor(e.FB().CursorDX-e.FB().OffsetX, e.FB().CursorY-e.FB().OffsetY)
@@ -369,11 +392,11 @@ const (
 func (e *Editor) ScrollView() {
 
 	// If the prompt is currently active, everything below can be skipped.
-	if e.PromptActive {
+	if e.PromptIsActive {
 		return
 	}
 
-	e.FB().CursorDX = e.FB().CurrentRow().AdjustX(e.FB().CursorX)
+	e.FB().CursorDX = e.FB().FocusedRow().AdjustX(e.FB().CursorX)
 
 	if e.FB().CursorY-1 < e.FB().OffsetY {
 		e.FB().OffsetY = e.FB().CursorY - 1
@@ -408,12 +431,12 @@ func (e *Editor) MoveCursor(move CursorMove) {
 			e.FB().CursorX--
 		} else if e.FB().CursorY > 1 {
 			e.FB().CursorY--
-			e.FB().CursorX = len(e.FB().CurrentRow().Text)
+			e.FB().CursorX = len(e.FB().FocusedRow().Text)
 		}
 	case CursorMoveRight:
-		if e.FB().CursorX < len(e.FB().CurrentRow().Text) {
+		if e.FB().CursorX < len(e.FB().FocusedRow().Text) {
 			e.FB().CursorX++
-		} else if e.FB().CursorX == len(e.FB().CurrentRow().Text) && e.FB().CursorY != e.FB().Length() {
+		} else if e.FB().CursorX == len(e.FB().FocusedRow().Text) && e.FB().CursorY != e.FB().Length() {
 			e.FB().CursorX = 0
 			e.FB().CursorY++
 		}
@@ -421,13 +444,13 @@ func (e *Editor) MoveCursor(move CursorMove) {
 
 		// Move the cursor to the end of the indent if the cursor is not there
 		// already, otherwise, move it to the start of the line.
-		if e.FB().CursorX != e.FB().CurrentRow().IndentLength() {
-			e.FB().CursorX = e.FB().CurrentRow().IndentLength()
+		if e.FB().CursorX != e.FB().FocusedRow().IndentLength() {
+			e.FB().CursorX = e.FB().FocusedRow().IndentLength()
 		} else {
 			e.FB().CursorX = 0
 		}
 	case CursorMoveLineEnd:
-		e.FB().CursorX = len(e.FB().CurrentRow().Text)
+		e.FB().CursorX = len(e.FB().FocusedRow().Text)
 	case CursorMovePageUp:
 		if e.Height > e.FB().CursorY {
 			e.FB().CursorY = 1
@@ -444,7 +467,7 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	}
 
 	// Prevent the user from moving past the end of the line.
-	rowLength := len(e.FB().CurrentRow().Text)
+	rowLength := len(e.FB().FocusedRow().Text)
 	if e.FB().CursorX > rowLength {
 		e.FB().CursorX = rowLength
 	}
@@ -452,7 +475,7 @@ func (e *Editor) MoveCursor(move CursorMove) {
 
 // MovePromptCursor moves the cursor inside of the current prompt.
 func (e *Editor) MovePromptCursor(move CursorMove) {
-	x := e.FB().CursorX - len(e.Question)
+	x := e.FB().CursorX - len(e.PromptQuestion)
 
 	switch move {
 	case CursorMoveLeft:
@@ -460,7 +483,7 @@ func (e *Editor) MovePromptCursor(move CursorMove) {
 			e.FB().CursorX--
 		}
 	case CursorMoveRight:
-		if x < len(e.Answer) {
+		if x < len(e.PromptAnswer) {
 			e.FB().CursorX++
 		}
 	}
@@ -481,7 +504,7 @@ func (e *Editor) FB() *Buffer {
 // DirtyBufferCount returns the number of dirty buffers.
 func (e *Editor) DirtyBufferCount() (count int) {
 	for _, b := range e.Buffers {
-		if b.Dirty {
+		if b.IsDirty {
 			count++
 		}
 	}
@@ -502,14 +525,14 @@ func (e *Editor) Ask(q, a string) (string, error) {
 
 	defer func() {
 		e.FB().CursorX, e.FB().CursorY = savedX, savedY
-		e.PromptActive = false
+		e.PromptIsActive = false
 	}()
 
-	e.PromptActive = true
-	e.Question, e.Answer = q, a
+	e.PromptIsActive = true
+	e.PromptQuestion, e.PromptAnswer = q, a
 
 	e.FB().CursorY = e.Height
-	e.FB().CursorX = len(e.Question) + len(e.Answer)
+	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
 
 	for {
 		e.Draw()
@@ -524,7 +547,7 @@ func (e *Editor) Ask(q, a string) (string, error) {
 			case termbox.KeyArrowRight:
 				e.MovePromptCursor(CursorMoveRight)
 			case termbox.KeyEnter:
-				return e.Answer, nil
+				return e.PromptAnswer, nil
 			case termbox.KeyBackspace2:
 				e.DeletePromptChar()
 			case termbox.KeySpace:
@@ -541,14 +564,14 @@ func (e *Editor) AskChar(q string, choices []rune) (rune, error) {
 
 	defer func() {
 		e.FB().CursorX, e.FB().CursorY = savedX, savedY
-		e.PromptActive = false
+		e.PromptIsActive = false
 	}()
 
-	e.PromptActive = true
-	e.Question, e.Answer = q, ""
+	e.PromptIsActive = true
+	e.PromptQuestion, e.PromptAnswer = q, ""
 
 	e.FB().CursorY = e.Height
-	e.FB().CursorX = len(e.Question) + len(e.Answer)
+	e.FB().CursorX = len(e.PromptQuestion) + len(e.PromptAnswer)
 
 	for {
 		e.Draw()
