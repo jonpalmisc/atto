@@ -20,12 +20,12 @@
     The following features are currently available in Atto:
 
       - Core editor functionality (text viewing & editing)
+      - Multiple simultaneous buffers
       - Simple syntax highlighting (Go & C)
       - User configuration files (options limited)
 
     In addition to the features above, the following features are planned:
 
-      - Support for editing multiple buffers
       - Copy/cut/paste functionality
       - Smarter syntax highlighting with user-definable language syntax files
 

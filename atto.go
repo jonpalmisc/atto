@@ -5,8 +5,6 @@ import (
 )
 
 func main() {
-	args := os.Args[1:]
-
-	editor := MakeEditor()
-	editor.Run(args)
+	editor := CreateEditor()
+	editor.Run(os.Args[1:])
 }
