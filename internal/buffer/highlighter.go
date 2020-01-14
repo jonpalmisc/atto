@@ -1,6 +1,7 @@
-package main
+package buffer
 
 import (
+	"github.com/jonpalmisc/atto/internal/syntax"
 	"unicode"
 
 	"github.com/nsf/termbox-go"
@@ -43,7 +44,7 @@ func IsSeparator(c rune) bool {
 	}
 }
 
-func HighlightLine(l *BufferLine, s *Syntax) {
+func HighlightLine(l *BufferLine, s *syntax.Syntax) {
 	H := &l.Highlighting
 
 	inString := false

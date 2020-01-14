@@ -1,6 +1,10 @@
-package main
+package buffer
 
-import "strings"
+import (
+	"github.com/jonpalmisc/atto/internal/support"
+	"github.com/jonpalmisc/atto/internal/syntax"
+	"strings"
+)
 
 // BufferLine represents a single line in a buffer.
 type BufferLine struct {
@@ -26,9 +30,9 @@ func (l *BufferLine) InsertChar(i int, c rune) {
 
 	// If a tab is being inserted and the editor is using soft tabs insert a
 	// tab's width worth of spaces instead.
-	if c == '\t' && l.Buffer.Editor.Config.SoftTabs {
-		l.Text = l.Text[:i] + strings.Repeat(" ", l.Buffer.Editor.Config.TabSize) + l.Text[i:]
-		l.Buffer.CursorX += l.Buffer.Editor.Config.TabSize - 1
+	if c == '\t' && l.Buffer.Config.SoftTabs {
+		l.Text = l.Text[:i] + strings.Repeat(" ", l.Buffer.Config.TabSize) + l.Text[i:]
+		l.Buffer.CursorX += l.Buffer.Config.TabSize - 1
 	} else {
 		l.Text = l.Text[:i] + string(c) + l.Text[i:]
 	}
@@ -53,23 +57,23 @@ func (l *BufferLine) AppendString(s string) {
 // Update refreshes the DisplayText field.
 func (l *BufferLine) Update() {
 	// Expand tabs to spaces.
-	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Buffer.Editor.Config.TabSize))
+	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Buffer.Config.TabSize))
 
 	l.Highlighting = make([]HighlightType, len(l.DisplayText))
 
-	if l.Buffer.Editor.Config.UseHighlighting {
+	if l.Buffer.Config.UseHighlighting {
 		switch l.Buffer.FileType {
-		case FileTypeC, FileTypeCPP:
-			HighlightLine(l, &SyntaxC)
-		case FileTypeGo:
-			HighlightLine(l, &SyntaxGo)
+		case support.FileTypeC, support.FileTypeCPP:
+			HighlightLine(l, &syntax.SyntaxC)
+		case support.FileTypeGo:
+			HighlightLine(l, &syntax.SyntaxGo)
 		}
 	}
 }
 
 // AdjustX corrects the cursor's X position to compensate for rendering effects.
 func (l *BufferLine) AdjustX(x int) int {
-	tabSize := l.Buffer.Editor.Config.TabSize
+	tabSize := l.Buffer.Config.TabSize
 	delta := 0
 
 	for _, c := range l.Text[:x] {

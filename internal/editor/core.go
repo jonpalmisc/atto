@@ -1,8 +1,11 @@
-package main
+package editor
 
 import (
 	"errors"
 	"fmt"
+	"github.com/jonpalmisc/atto/internal/buffer"
+	"github.com/jonpalmisc/atto/internal/config"
+	"github.com/jonpalmisc/atto/internal/support"
 	"io/ioutil"
 	"os"
 	"time"
@@ -14,7 +17,7 @@ import (
 type Editor struct {
 
 	// The editor's buffers and the index of the focused buffer.
-	Buffers    []Buffer
+	Buffers    []buffer.Buffer
 	FocusIndex int
 
 	// The editor's height and width measured in rows and columns, respectively.
@@ -31,7 +34,7 @@ type Editor struct {
 	PromptIsActive bool
 
 	// The user's editor configuration.
-	Config Config
+	Config config.Config
 }
 
 // CreateEditor creates a new Editor instance.
@@ -41,7 +44,7 @@ func CreateEditor() (editor Editor) {
 	}
 
 	// Attempt to load the user's editor configuration.
-	config, err := LoadConfig()
+	config, err := config.LoadConfig()
 	if err != nil {
 		editor.SetStatusMessage("Failed to load config! (%v)", err)
 	}
@@ -121,12 +124,12 @@ func (e *Editor) Run(args []string) {
 			e.Read(file)
 		}
 	} else {
-		b, err := CreateBuffer(e, "Untitled")
+		b, err := buffer.CreateBuffer(&e.Config, "Untitled")
 		if err != nil {
 			panic(err)
 		}
 
-		e.Buffers = []Buffer{b}
+		e.Buffers = []buffer.Buffer{b}
 	}
 
 	e.Draw()
@@ -152,7 +155,7 @@ func (e *Editor) Run(args []string) {
 
 // Read reads a file into a new buffer.
 func (e *Editor) Read(path string) {
-	b, err := CreateBuffer(e, path)
+	b, err := buffer.CreateBuffer(&e.Config, path)
 	if err != nil {
 		e.SetStatusMessage("Error: %v", err)
 	} else {
@@ -194,7 +197,7 @@ func (e *Editor) Save() {
 		e.SetStatusMessage("File saved successfully. (%v)", filename)
 
 		e.FB().FileName = filename
-		e.FB().FileType = GuessFileType(filename)
+		e.FB().FileType = support.GuessFileType(filename)
 		e.FB().IsDirty = false
 	}
 }
@@ -224,7 +227,7 @@ func (e *Editor) Close(i int) {
 
 // InsertPromptChar inserts a character into the current prompt answer.
 func (e *Editor) InsertPromptChar(c rune) {
-	if IsInsertable(c) {
+	if support.IsInsertable(c) {
 		i := e.FB().CursorX - len(e.PromptQuestion)
 
 		e.PromptAnswer = e.PromptAnswer[:i] + string(c) + e.PromptAnswer[i:]
@@ -246,7 +249,7 @@ func (e *Editor) DeletePromptChar() {
 
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
-	info := ProgramName + " " + ProgramVersion
+	info := support.ProgramName + " " + support.ProgramVersion
 	systemTime := time.Now().Local().Format("2006-01-02 15:04")
 
 	indicator := ""
@@ -497,7 +500,7 @@ func (e *Editor) BufferCount() int {
 }
 
 // FB returns the focused buffer.
-func (e *Editor) FB() *Buffer {
+func (e *Editor) FB() *buffer.Buffer {
 	return &e.Buffers[e.FocusIndex]
 }
 
@@ -582,7 +585,7 @@ func (e *Editor) AskChar(q string, choices []rune) (rune, error) {
 			case termbox.KeyEsc, termbox.KeyCtrlC:
 				return '\x00', errors.New("user cancelled")
 			default:
-				if IsInsertable(event.Ch) {
+				if support.IsInsertable(event.Ch) {
 					for _, r := range choices {
 						if r == event.Ch {
 							return r, nil

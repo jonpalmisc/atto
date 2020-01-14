@@ -1,17 +1,19 @@
-package main
+package buffer
 
 import (
 	"bufio"
 	"fmt"
+	"github.com/jonpalmisc/atto/internal/config"
+	"github.com/jonpalmisc/atto/internal/support"
 	"os"
 )
 
 type Buffer struct {
-	Editor *Editor
+	Config *config.Config
 
 	// The name and type of the file currently being edited.
 	FileName string
-	FileType FileType
+	FileType support.FileType
 
 	Lines   []BufferLine
 	IsDirty bool
@@ -30,11 +32,11 @@ type Buffer struct {
 }
 
 // CreateBuffer creates a new buffer for a given path.
-func CreateBuffer(editor *Editor, path string) (Buffer, error) {
+func CreateBuffer(config *config.Config, path string) (Buffer, error) {
 	b := Buffer{
-		Editor:   editor,
+		Config:   config,
 		FileName: path,
-		FileType: GuessFileType(path),
+		FileType: support.GuessFileType(path),
 		CursorY:  1,
 	}
 
@@ -113,7 +115,7 @@ func (b *Buffer) BreakLine() {
 
 // InsertChar inserts a character at the cursor's position.
 func (b *Buffer) InsertChar(c rune) {
-	if IsInsertable(c) {
+	if support.IsInsertable(c) {
 		b.FocusedRow().InsertChar(b.CursorX, c)
 		b.CursorX++
 		b.IsDirty = true

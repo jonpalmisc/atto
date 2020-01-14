@@ -1,4 +1,4 @@
-package main
+package syntax
 
 // SyntaxPatterns is used to define syntax patterns for the highlighter.
 type SyntaxPatterns struct {
