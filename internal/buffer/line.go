@@ -9,10 +9,10 @@ import (
 
 // Line represents a single line in a buffer.
 type Line struct {
-	Buffer       *Buffer
-	Text         string
-	DisplayText  string
-	Highlighting []HighlightType
+	Buffer      *Buffer
+	Text        string
+	DisplayText string
+	TokenTypes  []TokenType
 }
 
 // MakeBufferLine creates a new Line with the given text.
@@ -60,14 +60,14 @@ func (l *Line) Update() {
 	// Expand tabs to spaces.
 	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Buffer.Config.TabSize))
 
-	l.Highlighting = make([]HighlightType, len(l.DisplayText))
+	l.TokenTypes = make([]TokenType, len(l.DisplayText))
 
 	if l.Buffer.Config.UseHighlighting {
 		switch l.Buffer.FileType {
 		case support.FileTypeC, support.FileTypeCPP:
-			HighlightLine(l, &syntax.SyntaxC)
+			l.Highlight(&syntax.SyntaxC)
 		case support.FileTypeGo:
-			HighlightLine(l, &syntax.SyntaxGo)
+			l.Highlight(&syntax.SyntaxGo)
 		}
 	}
 }

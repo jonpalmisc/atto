@@ -86,11 +86,11 @@ func (e *Editor) DrawBuffer() {
 			length := len(line.DisplayText) - e.FB().OffsetX
 
 			text := line.DisplayText
-			highlighting := line.Highlighting
+			tokens := line.TokenTypes
 
 			if length > 0 {
 				for x, c := range text[e.FB().OffsetX : e.FB().OffsetX+length] {
-					termbox.SetCell(x, y+1, c, highlighting[x].Color(), 0)
+					termbox.SetCell(x, y+1, c, tokens[x].Color(), 0)
 				}
 			}
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/jonpalmisc/atto/internal/support"
 )
 
+// Buffer represents a text buffer corresponding to a file.
 type Buffer struct {
 	Config *config.Config
 
@@ -17,6 +18,7 @@ type Buffer struct {
 	FileName string
 	FileType support.FileType
 
+	// The buffer's lines and condition.
 	Lines   []Line
 	IsDirty bool
 
@@ -55,7 +57,7 @@ func Create(config *config.Config, path string) (Buffer, error) {
 	}
 
 	// If the file is completely empty, add an empty line to the buffer.
-	if len(b.Lines) == 0 {
+	if b.Length() == 0 {
 		b.InsertLine(0, "")
 	}
 
@@ -94,7 +96,7 @@ func IsInsertable(c rune) bool {
 func (b *Buffer) InsertLine(i int, text string) {
 
 	// Ensure the index we are trying to insert at is valid.
-	if i >= 0 && i <= len(b.Lines) {
+	if i >= 0 && i <= b.Length() {
 
 		// https://github.com/golang/go/wiki/SliceTricks
 		b.Lines = append(b.Lines, Line{})
@@ -105,7 +107,7 @@ func (b *Buffer) InsertLine(i int, text string) {
 
 // RemoveLine removes the line at the given index from the buffer.
 func (b *Buffer) RemoveLine(i int) {
-	if i >= 0 && i < len(b.Lines) {
+	if i >= 0 && i < b.Length() {
 		b.Lines = append(b.Lines[:i], b.Lines[i+1:]...)
 		b.IsDirty = true
 	}
