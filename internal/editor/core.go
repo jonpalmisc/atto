@@ -37,19 +37,19 @@ type Editor struct {
 	Config config.Config
 }
 
-// CreateEditor creates a new Editor instance.
-func CreateEditor() (editor Editor) {
+// Create creates a new Editor instance.
+func Create() (editor Editor) {
 	if err := termbox.Init(); err != nil {
 		panic(err)
 	}
 
 	// Attempt to load the user's editor configuration.
-	config, err := config.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		editor.SetStatusMessage("Failed to load config! (%v)", err)
 	}
 
-	editor.Config = config
+	editor.Config = cfg
 
 	return editor
 }
@@ -124,7 +124,7 @@ func (e *Editor) Run(args []string) {
 			e.Read(file)
 		}
 	} else {
-		b, err := buffer.CreateBuffer(&e.Config, "Untitled")
+		b, err := buffer.Create(&e.Config, "Untitled")
 		if err != nil {
 			panic(err)
 		}
@@ -155,7 +155,7 @@ func (e *Editor) Run(args []string) {
 
 // Read reads a file into a new buffer.
 func (e *Editor) Read(path string) {
-	b, err := buffer.CreateBuffer(&e.Config, path)
+	b, err := buffer.Create(&e.Config, path)
 	if err != nil {
 		e.SetStatusMessage("Error: %v", err)
 	} else {
@@ -249,7 +249,7 @@ func (e *Editor) DeletePromptChar() {
 
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
-	info := support.ProgramName + " " + support.ProgramVersion
+	info := "Atto " + support.Version
 	systemTime := time.Now().Local().Format("2006-01-02 15:04")
 
 	indicator := ""
@@ -399,7 +399,7 @@ func (e *Editor) ScrollView() {
 		return
 	}
 
-	e.FB().CursorDX = e.FB().FocusedRow().AdjustX(e.FB().CursorX)
+	e.FB().CursorDX = e.FB().FocusedLine().AdjustX(e.FB().CursorX)
 
 	if e.FB().CursorY-1 < e.FB().OffsetY {
 		e.FB().OffsetY = e.FB().CursorY - 1
@@ -434,12 +434,12 @@ func (e *Editor) MoveCursor(move CursorMove) {
 			e.FB().CursorX--
 		} else if e.FB().CursorY > 1 {
 			e.FB().CursorY--
-			e.FB().CursorX = len(e.FB().FocusedRow().Text)
+			e.FB().CursorX = len(e.FB().FocusedLine().Text)
 		}
 	case CursorMoveRight:
-		if e.FB().CursorX < len(e.FB().FocusedRow().Text) {
+		if e.FB().CursorX < len(e.FB().FocusedLine().Text) {
 			e.FB().CursorX++
-		} else if e.FB().CursorX == len(e.FB().FocusedRow().Text) && e.FB().CursorY != e.FB().Length() {
+		} else if e.FB().CursorX == len(e.FB().FocusedLine().Text) && e.FB().CursorY != e.FB().Length() {
 			e.FB().CursorX = 0
 			e.FB().CursorY++
 		}
@@ -447,13 +447,13 @@ func (e *Editor) MoveCursor(move CursorMove) {
 
 		// Move the cursor to the end of the indent if the cursor is not there
 		// already, otherwise, move it to the start of the line.
-		if e.FB().CursorX != e.FB().FocusedRow().IndentLength() {
-			e.FB().CursorX = e.FB().FocusedRow().IndentLength()
+		if e.FB().CursorX != e.FB().FocusedLine().IndentLength() {
+			e.FB().CursorX = e.FB().FocusedLine().IndentLength()
 		} else {
 			e.FB().CursorX = 0
 		}
 	case CursorMoveLineEnd:
-		e.FB().CursorX = len(e.FB().FocusedRow().Text)
+		e.FB().CursorX = len(e.FB().FocusedLine().Text)
 	case CursorMovePageUp:
 		if e.Height > e.FB().CursorY {
 			e.FB().CursorY = 1
@@ -470,7 +470,7 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	}
 
 	// Prevent the user from moving past the end of the line.
-	rowLength := len(e.FB().FocusedRow().Text)
+	rowLength := len(e.FB().FocusedLine().Text)
 	if e.FB().CursorX > rowLength {
 		e.FB().CursorX = rowLength
 	}

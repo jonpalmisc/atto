@@ -44,7 +44,7 @@ func IsSeparator(c rune) bool {
 	}
 }
 
-func HighlightLine(l *BufferLine, s *syntax.Syntax) {
+func HighlightLine(l *Line, s *syntax.Syntax) {
 	H := &l.Highlighting
 
 	inString := false

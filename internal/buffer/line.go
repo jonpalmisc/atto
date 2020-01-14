@@ -6,17 +6,17 @@ import (
 	"strings"
 )
 
-// BufferLine represents a single line in a buffer.
-type BufferLine struct {
+// Line represents a single line in a buffer.
+type Line struct {
 	Buffer       *Buffer
 	Text         string
 	DisplayText  string
 	Highlighting []HighlightType
 }
 
-// MakeBufferLine creates a new BufferLine with the given text.
-func MakeBufferLine(buffer *Buffer, text string) (bl BufferLine) {
-	bl = BufferLine{
+// MakeBufferLine creates a new Line with the given text.
+func MakeBufferLine(buffer *Buffer, text string) (bl Line) {
+	bl = Line{
 		Buffer: buffer,
 		Text:   text,
 	}
@@ -26,7 +26,7 @@ func MakeBufferLine(buffer *Buffer, text string) (bl BufferLine) {
 }
 
 // InsertChar inserts a character into the line at the given index.
-func (l *BufferLine) InsertChar(i int, c rune) {
+func (l *Line) InsertChar(i int, c rune) {
 
 	// If a tab is being inserted and the editor is using soft tabs insert a
 	// tab's width worth of spaces instead.
@@ -41,7 +41,7 @@ func (l *BufferLine) InsertChar(i int, c rune) {
 }
 
 // DeleteChar deletes a character from the line at the given index.
-func (l *BufferLine) DeleteChar(i int) {
+func (l *Line) DeleteChar(i int) {
 	if i >= 0 && i < len(l.Text) {
 		l.Text = l.Text[:i] + l.Text[i+1:]
 		l.Update()
@@ -49,13 +49,13 @@ func (l *BufferLine) DeleteChar(i int) {
 }
 
 // AppendString appends a string to the line.
-func (l *BufferLine) AppendString(s string) {
+func (l *Line) AppendString(s string) {
 	l.Text += s
 	l.Update()
 }
 
 // Update refreshes the DisplayText field.
-func (l *BufferLine) Update() {
+func (l *Line) Update() {
 	// Expand tabs to spaces.
 	l.DisplayText = strings.ReplaceAll(l.Text, "\t", strings.Repeat(" ", l.Buffer.Config.TabSize))
 
@@ -72,7 +72,7 @@ func (l *BufferLine) Update() {
 }
 
 // AdjustX corrects the cursor's X position to compensate for rendering effects.
-func (l *BufferLine) AdjustX(x int) int {
+func (l *Line) AdjustX(x int) int {
 	tabSize := l.Buffer.Config.TabSize
 	delta := 0
 
@@ -88,7 +88,7 @@ func (l *BufferLine) AdjustX(x int) int {
 }
 
 // IndentLength gets the line's level of indentation in columns.
-func (l *BufferLine) IndentLength() (indent int) {
+func (l *Line) IndentLength() (indent int) {
 	for j := 0; j < len(l.Text) && (l.Text[j] == ' ' || l.Text[j] == '\t'); j++ {
 		indent++
 	}

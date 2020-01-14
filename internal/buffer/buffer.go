@@ -15,7 +15,7 @@ type Buffer struct {
 	FileName string
 	FileType support.FileType
 
-	Lines   []BufferLine
+	Lines   []Line
 	IsDirty bool
 
 	// The cursor's position. The Y value must always be decremented by one when
@@ -31,8 +31,8 @@ type Buffer struct {
 	OffsetY int
 }
 
-// CreateBuffer creates a new buffer for a given path.
-func CreateBuffer(config *config.Config, path string) (Buffer, error) {
+// Create creates a new buffer for a given path.
+func Create(config *config.Config, path string) (Buffer, error) {
 	b := Buffer{
 		Config:   config,
 		FileName: path,
@@ -67,8 +67,8 @@ func (b *Buffer) Length() int {
 	return len(b.Lines)
 }
 
-// FocusedRow returns the buffer's focused row.
-func (b *Buffer) FocusedRow() *BufferLine {
+// FocusedLine returns the buffer's focused line.
+func (b *Buffer) FocusedLine() *Line {
 	return &b.Lines[b.CursorY-1]
 }
 
@@ -79,7 +79,7 @@ func (b *Buffer) InsertLine(i int, text string) {
 	if i >= 0 && i <= len(b.Lines) {
 
 		// https://github.com/golang/go/wiki/SliceTricks
-		b.Lines = append(b.Lines, BufferLine{})
+		b.Lines = append(b.Lines, Line{})
 		copy(b.Lines[i+1:], b.Lines[i:])
 		b.Lines[i] = MakeBufferLine(b, text)
 	}
@@ -99,12 +99,12 @@ func (b *Buffer) BreakLine() {
 		b.InsertLine(b.CursorY-1, "")
 		b.CursorX = 0
 	} else {
-		text := b.FocusedRow().Text
-		indent := b.FocusedRow().IndentLength()
+		text := b.FocusedLine().Text
+		indent := b.FocusedLine().IndentLength()
 
 		b.InsertLine(b.CursorY, text[:indent]+text[b.CursorX:])
-		b.FocusedRow().Text = text[:b.CursorX]
-		b.FocusedRow().Update()
+		b.FocusedLine().Text = text[:b.CursorX]
+		b.FocusedLine().Update()
 
 		b.CursorX = indent
 	}
@@ -116,7 +116,7 @@ func (b *Buffer) BreakLine() {
 // InsertChar inserts a character at the cursor's position.
 func (b *Buffer) InsertChar(c rune) {
 	if support.IsInsertable(c) {
-		b.FocusedRow().InsertChar(b.CursorX, c)
+		b.FocusedLine().InsertChar(b.CursorX, c)
 		b.CursorX++
 		b.IsDirty = true
 	}
@@ -127,11 +127,11 @@ func (b *Buffer) DeleteChar() {
 	if b.CursorX == 0 && b.CursorY-1 == 0 {
 		return
 	} else if b.CursorX > 0 {
-		b.FocusedRow().DeleteChar(b.CursorX - 1)
+		b.FocusedLine().DeleteChar(b.CursorX - 1)
 		b.CursorX--
 	} else {
 		b.CursorX = len(b.Lines[b.CursorY-2].Text)
-		b.Lines[b.CursorY-2].AppendString(b.FocusedRow().Text)
+		b.Lines[b.CursorY-2].AppendString(b.FocusedLine().Text)
 		b.RemoveLine(b.CursorY - 1)
 		b.CursorY--
 	}

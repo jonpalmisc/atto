@@ -5,11 +5,7 @@ import (
 	"unicode"
 )
 
-const (
-	ProgramName    string = "Atto"
-	ProgramVersion string = "0.4.0"
-	ProgramAuthor  string = "Jon Palmisciano <jonpalmisc@gmail.com>"
-)
+const Version string = "0.4.0"
 
 func IsInsertable(c rune) bool {
 	switch unicode.ToLower(c) {
