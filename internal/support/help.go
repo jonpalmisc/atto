@@ -1,6 +1,6 @@
 package support
 
-const AttoVersion string = "0.4.0"
+const AttoVersion string = "0.5.0"
 
 var HelpMessage = []string{
 	"Atto " + AttoVersion,
