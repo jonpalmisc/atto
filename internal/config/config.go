@@ -31,6 +31,8 @@ type Config struct {
 	TabSize         int
 	UseSoftTabs     bool
 	UseHighlighting bool
+	ShowFullPaths bool
+	Use24HourTime bool
 }
 
 // Default returns the default configuration.
@@ -39,6 +41,8 @@ func Default() Config {
 		TabSize:         4,
 		UseSoftTabs:     false,
 		UseHighlighting: true,
+		ShowFullPaths: false,
+		Use24HourTime: false,
 	}
 }
 

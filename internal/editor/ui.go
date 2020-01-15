@@ -24,11 +24,29 @@ func drawText(text []rune, ox, y int, fg, bg termbox.Attribute) {
 	}
 }
 
+// uiLocalTime gives the current time formatted according to the user's config.
+func (e *Editor) uiLocalTime() string {
+	if e.Config.Use24HourTime {
+		return time.Now().Local().Format("2006-01-02 15:04")
+	}
+
+	return time.Now().Local().Format("2006-01-02 3:04 PM")
+}
+
+// uiFileName gives the file name or the full path depending on the user's config.
+func (e *Editor) uiFileName() string {
+	if e.Config.ShowFullPaths {
+		return e.FB().Path
+	}
+
+	return e.FB().FileName()
+}
+
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
 	info := "Atto " + support.AttoVersion
-	localTime := time.Now().Local().Format("2006-01-02 15:04")
-	name := fmt.Sprintf("%v (%v/%v)", e.FB().FileName(), e.FocusIndex+1, e.BufferCount())
+	localTime := e.uiLocalTime()
+	name := fmt.Sprintf("%v (%v/%v)", e.uiFileName(), e.FocusIndex+1, e.BufferCount())
 
 	// Prepend an asterisk in front of the filename if it is unsaved.
 	if e.FB().IsDirty {
