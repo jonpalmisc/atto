@@ -67,8 +67,7 @@ func (e *Editor) DrawStatusBar() {
 	message := e.statusBarMessage()
 
 	// Format the file info string.
-	info := fmt.Sprintf(" | %v | Line %v, Column %v", e.FB().FileType,
-		e.FB().CursorY, e.FB().CursorDX+1)
+	info := fmt.Sprintf(" | %v | %v:%v", e.FB().FileType, e.FB().CursorY, e.FB().CursorDX+1)
 	infoOffset := e.Width - len(info)
 
 	// Draw the bar canvas.

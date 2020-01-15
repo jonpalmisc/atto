@@ -1,9 +1,9 @@
 package support
 
-const AttoVersion string = "0.5.0"
+const AttoVersion string = "0.5.1"
 
 var HelpMessage = []string{
-	"Atto " + AttoVersion,
+	"Atto - A lightweight, opinionated text editor written in Go.",
 	"Copyright (c) 2019-2020 Jon Palmisciano",
 	"",
 	"1.  Usage",
@@ -12,10 +12,18 @@ var HelpMessage = []string{
 	"",
 	"2.  Shortcuts",
 	"",
-	"      - Ctrl+R: Open buffer",
-	"      - Ctrl+O: Save buffer",
-	"      - Ctrl+X: Close buffer",
-	"      - Ctrl+H: Show help",
+	"    ^R  Open a new buffer",
+	"    ^O  Save the current buffer",
+	"    ^X  Close the current buffer",
+	"",
+	"    ^P  Go to the next buffer",
+	"    ^L  Go to the previous buffer",
+	"",
+	"    ^A  Jump to the beginning of the line",
+	"    ^E  Jump to the end of the line",
+
+	"    ^C  Cancel the active operation",
+	"    ^H  Show this help screen",
 	"",
 	"3.  Configuration",
 	"",
