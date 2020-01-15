@@ -8,72 +8,77 @@ import (
 	"github.com/nsf/termbox-go"
 )
 
+const (
+
+	// BarForeground is the foreground color of title/status bars.
+	BarForeground = termbox.ColorBlack
+
+	// BarBackground is the background color of title/status bars.
+	BarBackground = termbox.ColorWhite
+)
+
+// drawText is a helper function for drawing an array of runes left to right.
+func drawText(text []rune, ox, y int, fg, bg termbox.Attribute) {
+	for i := 0; i < len(text); i++ {
+		termbox.SetCell(ox+i, y, text[i], fg, bg)
+	}
+}
+
 // DrawTitleBar draws the editor's title bar at the top of the screen.
 func (e *Editor) DrawTitleBar() {
 	info := "Atto " + support.AttoVersion
 	localTime := time.Now().Local().Format("2006-01-02 15:04")
-
 	name := fmt.Sprintf("%v (%v/%v)", e.FB().FileName, e.FocusIndex+1, e.BufferCount())
+
+	// Prepend an asterisk in front of the filename if it is unsaved.
 	if e.FB().IsDirty {
 		name = "*" + name
 	}
 
-	nameLen := len(name)
-	timeLen := len(localTime)
+	// Calculate the offsets for the filename and time. The name must be
+	// centered and the time must be right-aligned.
+	nameOffset := (e.Width - len(name)) / 2
+	timeOffset := e.Width - len(localTime)
 
-	// Draw the title bar canvas.
+	// Draw the bar canvas.
 	for x := 0; x < e.Width; x++ {
-		termbox.SetCell(x, 0, ' ', termbox.ColorBlack, termbox.ColorWhite)
+		termbox.SetCell(x, 0, ' ', BarForeground, BarBackground)
 	}
 
-	// Draw the info banner on the left.
-	for x := 0; x < len(info); x++ {
-		termbox.SetCell(x, 0, rune(info[x]),
-			termbox.ColorBlack, termbox.ColorWhite)
+	// Draw the bar elements.
+	drawText([]rune(info), 0, 0, BarForeground, BarBackground)
+	drawText([]rune(name), nameOffset, 0, BarForeground, BarBackground)
+	drawText([]rune(localTime), timeOffset, 0, BarForeground, BarBackground)
+}
+
+// statusBarMessage is a shorthand for getting the message for the status bar.
+func (e *Editor) statusBarMessage() string {
+	if e.PromptIsActive {
+		return e.PromptQuestion + e.PromptAnswer
+	} else if time.Now().Before(e.StatusMessageTime.Add(3 * time.Second)) {
+		return e.StatusMessage
 	}
 
-	// Draw the current file's name in the center.
-	namePadding := (e.Width - nameLen) / 2
-	for x := 0; x < nameLen; x++ {
-		termbox.SetCell(namePadding+x, 0, rune(name[x]),
-			termbox.ColorBlack, termbox.ColorWhite)
-	}
-
-	// Draw the system time on the right.
-	for x := 0; x < timeLen; x++ {
-		termbox.SetCell(e.Width-timeLen+x, 0, rune(localTime[x]),
-			termbox.ColorBlack, termbox.ColorWhite)
-	}
+	return ""
 }
 
 // DrawStatusBar draws the editor's status bar on the bottom of the screen.
 func (e *Editor) DrawStatusBar() {
-	left := ""
-	if e.PromptIsActive {
-		left = e.PromptQuestion + e.PromptAnswer
-	} else if time.Now().Before(e.StatusMessageTime.Add(3 * time.Second)) {
-		left = e.StatusMessage
-	}
+	message := e.statusBarMessage()
 
-	right := fmt.Sprintf(" | %v | Line %v, Column %v", e.FB().FileType, e.FB().CursorY, e.FB().CursorDX+1)
+	// Format the file info string.
+	info := fmt.Sprintf(" | %v | Line %v, Column %v", e.FB().FileType,
+		e.FB().CursorY, e.FB().CursorDX+1)
+	infoOffset := e.Width - len(info)
 
-	leftLen := len(left)
-	rightLen := len(right)
-
-	// Draw the status bar canvas.
+	// Draw the bar canvas.
 	for x := 0; x < e.Width; x++ {
-		termbox.SetCell(x, e.Height-1, ' ', termbox.ColorBlack, termbox.ColorWhite)
+		termbox.SetCell(x, e.Height-1, ' ', BarForeground, BarBackground)
 	}
 
-	// Draw the current prompt or status message on the left if it hasn't expired.
-	for x := 0; x < leftLen; x++ {
-		termbox.SetCell(x, e.Height-1, rune(left[x]), termbox.ColorBlack, termbox.ColorWhite)
-	}
-
-	// Draw the file type and position on the right.
-	for x := 0; x < rightLen; x++ {
-		termbox.SetCell(e.Width-rightLen+x, e.Height-1, rune(right[x]), termbox.ColorBlack, termbox.ColorWhite)
-	}
+	// Draw the bar elements.
+	drawText([]rune(message), 0, e.Height-1, BarForeground, BarBackground)
+	drawText([]rune(info), infoOffset, e.Height-1, BarForeground, BarBackground)
 }
 
 // DrawBuffer draws the editor's focused buffer.
@@ -81,18 +86,24 @@ func (e *Editor) DrawBuffer() {
 	for y := 0; y < e.Height-2; y++ {
 		i := y + e.FB().OffsetY
 
-		if i < e.FB().Length() {
-			line := e.FB().Lines[i]
-			length := len(line.DisplayText) - e.FB().OffsetX
+		// Return early if we reach the end of the buffer.
+		if i >= e.FB().Length() {
+			return
+		}
 
-			text := line.DisplayText
-			tokens := line.TokenTypes
+		line := e.FB().Lines[i]
+		length := len(line.DisplayText) - e.FB().OffsetX
 
-			if length > 0 {
-				for x, c := range text[e.FB().OffsetX : e.FB().OffsetX+length] {
-					termbox.SetCell(x, y+1, c, tokens[x].Color(), 0)
-				}
-			}
+		// Skip to the next line if we have nothing to draw.
+		if length <= 0 {
+			continue
+		}
+
+		text, tokens := line.DisplayText, line.TokenTypes
+		startIndex, endIndex := e.FB().OffsetX, e.FB().OffsetX+length
+
+		for x, c := range text[startIndex:endIndex] {
+			termbox.SetCell(x, y+1, c, tokens[x].Color(), 0)
 		}
 	}
 }
