@@ -29,9 +29,8 @@
       - Copy/cut/paste functionality
       - Smarter syntax highlighting with user-definable language syntax files
 
-    WARNING: Atto currently compiles on macOS, Linux, and Windows, but is only
-    being actively developed and tested on macOS at this time. Atto may be
-    unstable on other platforms at this time.
+    NOTICE: Atto is developed and tested on macOS, but should also work on Linux
+    and BSD systems. Windows is not supported at this time.
 
 3.  Installation
 
