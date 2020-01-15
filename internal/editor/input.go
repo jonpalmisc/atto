@@ -108,7 +108,7 @@ func (e *Editor) restoreCursor(x, y int) {
 // activatePrompt opens the prompt and moves the cursor to the prompt.
 func (e *Editor) activatePrompt(question, answer string) {
 	e.PromptQuestion, e.PromptAnswer, e.PromptIsActive = question, answer, true
-	e.FB().CursorY, e.FB().CursorX = e.Height, len(question) + len(answer)
+	e.FB().CursorY, e.FB().CursorX = e.Height, len(question)+len(answer)
 }
 
 // closePrompt is just syntactic sugar for setting PromptIsActive to false, but

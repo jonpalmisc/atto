@@ -3,12 +3,29 @@ package buffer
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"unicode"
 
 	"github.com/jonpalmisc/atto/internal/config"
 	"github.com/jonpalmisc/atto/internal/support"
 )
+
+// IsInsertable tells whether a character is insertable into the buffer or not.
+func IsInsertable(c rune) bool {
+	switch unicode.ToLower(c) {
+	case '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
+		'1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
+		'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
+		'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
+		'z', 'x', 'c', 'v', 'b', 'n', 'm',
+		'`', '~', '-', '=', '+', '\t', '[', '{', ']', '}', '\\', '|',
+		';', ':', '\'', '"', ',', '<', '.', '>', '/', '?', ' ':
+		return true
+	default:
+		return false
+	}
+}
 
 // Buffer represents a text buffer corresponding to a file.
 type Buffer struct {
@@ -76,85 +93,22 @@ func (b *Buffer) FocusedLine() *Line {
 	return &b.Lines[b.CursorY-1]
 }
 
-// IsInsertable tells whether a character is insertable into the buffer or not.
-func IsInsertable(c rune) bool {
-	switch unicode.ToLower(c) {
-	case '!', '@', '#', '$', '%', '^', '&', '*', '(', ')',
-		'1', '2', '3', '4', '5', '6', '7', '8', '9', '0',
-		'q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p',
-		'a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l',
-		'z', 'x', 'c', 'v', 'b', 'n', 'm',
-		'`', '~', '-', '=', '+', '\t', '[', '{', ']', '}', '\\', '|',
-		';', ':', '\'', '"', ',', '<', '.', '>', '/', '?', ' ':
-		return true
-	default:
-		return false
+func (b *Buffer) Write(path string) error {
+	var text string
+
+	// Append each line of the buffer (plus a newline) to the string.
+	for i := 0; i < b.Length(); i++ {
+		text += b.Lines[i].Text + "\n"
 	}
-}
 
-// InsertLine inserts a new line to the buffer at the given index.
-func (b *Buffer) InsertLine(i int, text string) {
-
-	// Ensure the index we are trying to insert at is valid.
-	if i >= 0 && i <= b.Length() {
-
-		// https://github.com/golang/go/wiki/SliceTricks
-		b.Lines = append(b.Lines, Line{})
-		copy(b.Lines[i+1:], b.Lines[i:])
-		b.Lines[i] = MakeBufferLine(b, text)
-	}
-}
-
-// RemoveLine removes the line at the given index from the buffer.
-func (b *Buffer) RemoveLine(i int) {
-	if i >= 0 && i < b.Length() {
-		b.Lines = append(b.Lines[:i], b.Lines[i+1:]...)
-		b.IsDirty = true
-	}
-}
-
-// BreakLine inserts a newline character and breaks the line at the cursor.
-func (b *Buffer) BreakLine() {
-	if b.CursorX == 0 {
-		b.InsertLine(b.CursorY-1, "")
-		b.CursorX = 0
+	err := ioutil.WriteFile(path, []byte(text), os.ModePerm)
+	if err != nil {
+		return err
 	} else {
-		text := b.FocusedLine().Text
-		indent := b.FocusedLine().IndentLength()
+		b.FileName = path
+		b.FileType = support.GuessFileType(path)
+		b.IsDirty = false
 
-		b.InsertLine(b.CursorY, text[:indent]+text[b.CursorX:])
-		b.FocusedLine().Text = text[:b.CursorX]
-		b.FocusedLine().Update()
-
-		b.CursorX = indent
+		return nil
 	}
-
-	b.CursorY++
-	b.IsDirty = true
-}
-
-// InsertRune inserts a rune at the cursor's position.
-func (b *Buffer) InsertRune(c rune) {
-	if IsInsertable(c) {
-		b.FocusedLine().InsertRune(b.CursorX, c)
-		b.CursorX++
-		b.IsDirty = true
-	}
-}
-
-// DeleteRune deletes the rune to the left of the cursor.
-func (b *Buffer) DeleteRune() {
-	if b.CursorX == 0 && b.CursorY-1 == 0 {
-		return
-	} else if b.CursorX > 0 {
-		b.FocusedLine().DeleteRune(b.CursorX - 1)
-		b.CursorX--
-	} else {
-		b.CursorX = len(b.Lines[b.CursorY-2].Text)
-		b.Lines[b.CursorY-2].AppendString(b.FocusedLine().Text)
-		b.RemoveLine(b.CursorY - 1)
-		b.CursorY--
-	}
-
-	b.IsDirty = true
 }

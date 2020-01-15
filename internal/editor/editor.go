@@ -63,8 +63,14 @@ func (e *Editor) Run(args []string) {
 
 	// If we have arguments, create a new buffer for each argument.
 	if len(args) != 0 {
-		for _, file := range args {
-			e.Read(file)
+		for _, path := range args {
+			b, err := buffer.Create(&e.Config, path)
+			if err != nil {
+				e.SetStatusMessage("Error: %v", err)
+				continue
+			}
+
+			e.Buffers = append(e.Buffers, b)
 		}
 	} else {
 		b, err := buffer.Create(&e.Config, "Untitled")
