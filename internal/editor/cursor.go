@@ -49,8 +49,8 @@ func (e *Editor) MoveCursor(move CursorMove) {
 		if e.FB().CursorX != 0 {
 			e.FB().CursorX--
 		} else if e.FB().CursorY > 1 {
+			e.FB().CursorX = len(e.FB().PreviousLine().Text)
 			e.FB().CursorY--
-			e.FB().CursorX = rowLength
 		}
 	case CursorMoveRight:
 		if e.FB().CursorX < rowLength {

@@ -123,6 +123,17 @@ func (b *Buffer) FocusedLine() *Line {
 	return &b.Lines[b.CursorY-1]
 }
 
+// PreviousLine returns the line above the buffer's focused line.
+func (b *Buffer) PreviousLine() *Line {
+	i := b.CursorY - 2
+
+	if i < 0 {
+		return &b.Lines[0]
+	}
+
+	return &b.Lines[i]
+}
+
 func (b *Buffer) Write(path string) error {
 	var text string
 
