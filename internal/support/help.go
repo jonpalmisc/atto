@@ -1,6 +1,6 @@
 package support
 
-const AttoVersion string = "0.5.4"
+const AttoVersion string = "0.5.5"
 
 var HelpMessage = []string{
 	"Atto - A lightweight, opinionated text editor written in Go.",

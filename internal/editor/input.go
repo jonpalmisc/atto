@@ -51,6 +51,9 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 				e.FocusIndex--
 			}
 
+		case termbox.KeyCtrlJ:
+			e.JumpToLine()
+
 		// Handle regular input keys.
 		case termbox.KeyBackspace2:
 			e.FB().DeleteRune()

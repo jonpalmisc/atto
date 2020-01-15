@@ -1,5 +1,7 @@
 package editor
 
+import "strconv"
+
 // CursorMove is a type of cursor movement.
 type CursorMove int
 
@@ -90,4 +92,36 @@ func (e *Editor) MoveCursor(move CursorMove) {
 	if e.FB().CursorX > rowLength {
 		e.FB().CursorX = rowLength
 	}
+}
+
+// JumpToLine asks the user for a line number and attempts to jump to that line.
+func (e *Editor) JumpToLine() {
+
+	// Prompt the user to enter a line number.
+	answer, err := e.Ask("Line: ", "")
+	if err != nil {
+		e.SetStatusMessage("Jump cancelled.")
+		return
+	}
+
+	// Attempt to convert the provided input into an integer.
+	i, err := strconv.Atoi(answer)
+	if err != nil {
+		e.SetStatusMessage("Error: Invalid input.")
+		return
+	}
+
+	lineCount := e.FB().Length()
+
+	// Check if the target line is out of bounds, then jump to the correct line.
+	if i <= 1 {
+		e.FB().CursorY = 1
+	} else if i > lineCount {
+		e.FB().CursorY = lineCount
+	} else {
+		e.FB().CursorY = i
+	}
+
+	// Automatically move the cursor to the start of the new line.
+	e.MoveCursor(CursorMoveLineStart)
 }
