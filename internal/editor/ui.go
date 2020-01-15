@@ -28,7 +28,7 @@ func drawText(text []rune, ox, y int, fg, bg termbox.Attribute) {
 func (e *Editor) DrawTitleBar() {
 	info := "Atto " + support.AttoVersion
 	localTime := time.Now().Local().Format("2006-01-02 15:04")
-	name := fmt.Sprintf("%v (%v/%v)", e.FB().FileName, e.FocusIndex+1, e.BufferCount())
+	name := fmt.Sprintf("%v (%v/%v)", e.FB().FileName(), e.FocusIndex+1, e.BufferCount())
 
 	// Prepend an asterisk in front of the filename if it is unsaved.
 	if e.FB().IsDirty {

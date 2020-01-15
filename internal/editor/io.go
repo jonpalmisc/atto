@@ -28,7 +28,7 @@ func (e *Editor) Save() {
 		return
 	}
 
-	path, err := e.Ask("Save as: ", e.FB().FileName)
+	path, err := e.Ask("Save: ", e.FB().Path)
 	if err != nil {
 		e.SetStatusMessage("Save cancelled.")
 		return

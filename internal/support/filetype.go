@@ -1,6 +1,8 @@
 package support
 
-import "strings"
+import (
+	"path/filepath"
+)
 
 // FileType represents a type of file.
 type FileType string
@@ -25,7 +27,11 @@ const (
 )
 
 // GuessFileType attempts to deduce a file's type from its name and extension.
-func GuessFileType(name string) FileType {
+func GuessFileType(path string) FileType {
+
+	// In theory the file name could be passed to this function but this is more
+	// convenient since this function is used when constructing buffers.
+	_, name := filepath.Split(path)
 
 	// Handle file types which have specific names.
 	switch name {
@@ -35,26 +41,19 @@ func GuessFileType(name string) FileType {
 		return FileTypeCMake
 	}
 
-	parts := strings.Split(name, ".")
-
-	// Return unknown if the file has no extension and wasn't matched earlier.
-	if len(parts) < 2 {
-		return FileTypeUnknown
-	}
-
 	// Attempt to determine the file's type by the extension.
-	switch parts[1] {
-	case "go":
+	switch filepath.Ext(name) {
+	case ".go":
 		return FileTypeGo
-	case "mod":
+	case ".mod":
 		return FileTypeGoModule
-	case "h", "c":
+	case ".h", ".c":
 		return FileTypeC
-	case "hpp", "cpp", "cc":
+	case ".hpp", ".cpp", ".cc":
 		return FileTypeCPP
-	case "md":
+	case ".md":
 		return FileTypeMarkdown
-	case "txt":
+	case ".txt":
 		return FileTypePlaintext
 	}
 

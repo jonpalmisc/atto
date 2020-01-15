@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"unicode"
 
 	"github.com/jonpalmisc/atto/internal/config"
@@ -31,8 +32,8 @@ func IsInsertable(c rune) bool {
 type Buffer struct {
 	Config *config.Config
 
-	// The name and type of the file currently being edited.
-	FileName string
+	// The path to the file and its type.
+	Path     string
 	FileType support.FileType
 
 	// The buffer's lines and condition.
@@ -57,7 +58,7 @@ type Buffer struct {
 func Create(config *config.Config, path string) (Buffer, error) {
 	b := Buffer{
 		Config:   config,
-		FileName: path,
+		Path:     path,
 		FileType: support.GuessFileType(path),
 		CursorY:  1,
 	}
@@ -84,10 +85,11 @@ func Create(config *config.Config, path string) (Buffer, error) {
 	return b, nil
 }
 
+// FromStrings creates a buffer from an array of strings rather than a file.
 func FromStrings(config *config.Config, name string, rawLines []string) Buffer {
 	b := Buffer{
 		Config:   config,
-		FileName: name,
+		Path:     name,
 		FileType: support.GuessFileType(name),
 		CursorY:  1,
 	}
@@ -110,6 +112,12 @@ func (b *Buffer) Length() int {
 	return len(b.Lines)
 }
 
+// FileName extracts the name of the file from the buffer's file path.
+func (b *Buffer) FileName() string {
+	_, name := filepath.Split(b.Path)
+	return name
+}
+
 // FocusedLine returns the buffer's focused line.
 func (b *Buffer) FocusedLine() *Line {
 	return &b.Lines[b.CursorY-1]
@@ -127,7 +135,7 @@ func (b *Buffer) Write(path string) error {
 	if err != nil {
 		return err
 	} else {
-		b.FileName = path
+		b.Path = path
 		b.FileType = support.GuessFileType(path)
 		b.IsDirty = false
 
