@@ -36,8 +36,9 @@ type Buffer struct {
 	FileType support.FileType
 
 	// The buffer's lines and condition.
-	Lines   []Line
-	IsDirty bool
+	Lines      []Line
+	IsDirty    bool
+	IsReadOnly bool
 
 	// The cursor's position. The Y value must always be decremented by one when
 	// accessing buffer elements since the editor's title bar occupies the first
@@ -81,6 +82,27 @@ func Create(config *config.Config, path string) (Buffer, error) {
 	f.Close()
 
 	return b, nil
+}
+
+func FromStrings(config *config.Config, name string, rawLines []string) Buffer {
+	b := Buffer{
+		Config:   config,
+		FileName: name,
+		FileType: support.GuessFileType(name),
+		CursorY:  1,
+	}
+
+	// Insert each array element as a new line.
+	for _, l := range rawLines {
+		b.InsertLine(b.Length(), l)
+	}
+
+	// If the file is completely empty, add an empty line to the buffer.
+	if b.Length() == 0 {
+		b.InsertLine(0, "")
+	}
+
+	return b
 }
 
 // Length returns the buffer's length (number of lines).

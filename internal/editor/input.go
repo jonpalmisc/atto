@@ -32,12 +32,15 @@ func (e *Editor) HandleEvent(event termbox.Event) {
 		case termbox.KeyCtrlE:
 			e.MoveCursor(CursorMoveLineEnd)
 
+		case termbox.KeyCtrlH:
+			e.ShowHelp()
+
 		// Handle buffer operation keys.
 		case termbox.KeyCtrlR:
 			e.Open()
 		case termbox.KeyCtrlO:
 			e.Save()
-		case termbox.KeyCtrlW:
+		case termbox.KeyCtrlX:
 			e.Close(e.FocusIndex)
 		case termbox.KeyCtrlP:
 			if e.FocusIndex+1 < e.BufferCount() {

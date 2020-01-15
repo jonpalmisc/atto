@@ -23,6 +23,11 @@ func (e *Editor) Open() {
 
 // Save writes the current buffer back to the file it was read from.
 func (e *Editor) Save() {
+	if e.FB().IsReadOnly {
+		e.SetStatusMessage("Warning: Read-only buffers cannot be saved.")
+		return
+	}
+
 	path, err := e.Ask("Save as: ", e.FB().FileName)
 	if err != nil {
 		e.SetStatusMessage("Save cancelled.")

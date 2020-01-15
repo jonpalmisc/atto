@@ -7,6 +7,7 @@ import (
 
 	"github.com/jonpalmisc/atto/internal/buffer"
 	"github.com/jonpalmisc/atto/internal/config"
+	"github.com/jonpalmisc/atto/internal/support"
 	"github.com/nsf/termbox-go"
 )
 
@@ -115,4 +116,12 @@ func (e *Editor) BufferCount() int {
 func (e *Editor) SetStatusMessage(format string, args ...interface{}) {
 	e.StatusMessage = fmt.Sprintf(format, args...)
 	e.StatusMessageTime = time.Now()
+}
+
+func (e *Editor) ShowHelp() {
+	b := buffer.FromStrings(&e.Config, "Help.txt", support.HelpMessage)
+	b.IsReadOnly = true
+
+	e.Buffers = append(e.Buffers, b)
+	e.FocusIndex = e.BufferCount() - 1
 }
