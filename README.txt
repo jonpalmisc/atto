@@ -41,6 +41,9 @@
 
     $ atto <file>
 
+    For help using Atto, a list of shortcuts & usage information can be shown
+    by pressing ^H inside Atto.
+
 5.  Configuration
 
     When you start Atto for the first time, a configuration folder will be
