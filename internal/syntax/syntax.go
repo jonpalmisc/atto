@@ -1,23 +1,23 @@
 package syntax
 
-// SyntaxPatterns is used to define syntax patterns for the highlighter.
-type SyntaxPatterns struct {
+// Patterns is used to define syntax patterns for the highlighter.
+type Patterns struct {
 	SingleLineCommentStart string
-	MultiLineCommendStart  string
+	MultiLineCommentStart  string
 	MultiLineCommentEnd    string
 }
 
 // Syntax represent's a language syntax for highlighting purposes.
 type Syntax struct {
 	Keywords []string
-	Patterns SyntaxPatterns
+	Patterns Patterns
 }
 
-// Syntax definitions are temporarily hardcoded until support for  language
+// Syntax definitions are temporarily hardcoded until support for language
 // definition files is added!
 
-// SyntaxC defines the syntax of the C language.
-var SyntaxC Syntax = Syntax{
+// LanguageC defines the syntax of the C language.
+var LanguageC = Syntax{
 	Keywords: []string{
 		"#define", "#include", "NULL", "auto", "break", "case", "char", "const",
 		"continue", "default", "do", "double", "else", "enum", "extern", "float",
@@ -25,15 +25,15 @@ var SyntaxC Syntax = Syntax{
 		"signed", "sizeof", "static", "struct", "switch", "typedef", "union",
 		"unsigned", "void", "volatile", "while",
 	},
-	Patterns: SyntaxPatterns{
+	Patterns: Patterns{
 		SingleLineCommentStart: "//",
-		MultiLineCommendStart:  "/*",
+		MultiLineCommentStart:  "/*",
 		MultiLineCommentEnd:    "*/",
 	},
 }
 
-// SyntaxGo defines the syntax of the Go language.
-var SyntaxGo Syntax = Syntax{
+// LanguageGo defines the syntax of the Go language.
+var LanguageGo = Syntax{
 	Keywords: []string{
 		"append", "bool", "break", "byte", "cap", "case", "chan", "close",
 		"complex", "complex128", "complex64", "const", "continue", "copy",
@@ -45,9 +45,9 @@ var SyntaxGo Syntax = Syntax{
 		"true", "type", "uint", "uint16", "uint32", "uint64", "uint8", "uintptr",
 		"var",
 	},
-	Patterns: SyntaxPatterns{
+	Patterns: Patterns{
 		SingleLineCommentStart: "//",
-		MultiLineCommendStart:  "/*",
+		MultiLineCommentStart:  "/*",
 		MultiLineCommentEnd:    "*/",
 	},
 }

@@ -67,9 +67,9 @@ func (l *Line) Update() {
 	if l.Buffer.Config.UseHighlighting {
 		switch l.Buffer.FileType {
 		case support.FileTypeC, support.FileTypeCPP:
-			l.Highlight(&syntax.SyntaxC)
+			l.Highlight(&syntax.LanguageC)
 		case support.FileTypeGo:
-			l.Highlight(&syntax.SyntaxGo)
+			l.Highlight(&syntax.LanguageGo)
 		}
 	}
 }
