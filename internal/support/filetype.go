@@ -1,10 +1,6 @@
 package support
 
-import (
-	"strings"
-)
-
-const AttoVersion string = "0.4.0"
+import "strings"
 
 // FileType represents a type of file.
 type FileType string
@@ -13,6 +9,7 @@ const (
 	FileTypeMakefile FileType = "Makefile"
 	FileTypeCMake    FileType = "CMake"
 
+	// -- Go --
 	FileTypeGo       FileType = "Go"
 	FileTypeGoModule FileType = "Go Module"
 
