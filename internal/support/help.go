@@ -19,6 +19,7 @@ var HelpMessage = []string{
 	"    ^P  Go to the next buffer",
 	"    ^L  Go to the previous buffer",
 	"",
+	"    ^J  Jump to a specific line",
 	"    ^A  Jump to the beginning of the line",
 	"    ^E  Jump to the end of the line",
 
