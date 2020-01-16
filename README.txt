@@ -29,9 +29,6 @@
       - Copy/cut/paste functionality
       - Smarter syntax highlighting with user-definable language syntax files
 
-    NOTICE: Atto is developed and tested on macOS, but should also work on Linux
-    and BSD systems. Windows is not supported at this time.
-
 3.  Installation
 
     Just build and place the binary somewhere in your PATH.
@@ -49,6 +46,10 @@
     created for you at '~/.atto'. Inside you will find a config.yml file which
     you can edit to change the editor's exposed preferences.
 
-6.  License
+6.  Compatibility
+
+    Atto currently only targets macOS and Linux. Windows is not supported.
+
+7.  License
 
     Atto is licensed under the MIT License. See LICENSE.txt for more info.
