@@ -9,6 +9,8 @@
 
 +------------------------------------------------------------------------------+
 
+NOTICE: This project is not actively maintained.
+
 1.  About
 
     Atto is a lightweight, opinionated text editor written in Go. The current
